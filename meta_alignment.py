@@ -34,7 +34,7 @@ def extract_match_feature(file, reffile):
     featurefile = (file.replace(audiodir, '') + '_' + reffile.replace(audiodir, '') + '.json')
     featurefile = featuresdir + featurefile.replace('/', '_')
     if not os.path.isfile(featurefile):
-        print 'extracting match feature for ' + file.replace(audiodir, '')
+        print 'extracting match feature for ..' + file[file.rfind('/')-15:] + ' and ..'+reffile[reffile.rfind('/')-15:]
         with open(os.devnull, 'wb') as devnull:
             subprocess.check_output("sonic-annotator -d vamp:match-vamp-plugin:match:a_b -m " + reffile + " " + file + " -w jams", shell=True, stderr=subprocess.STDOUT)
             move(reffile[:reffile.rfind('.flac')]+'.json', featurefile)
@@ -65,12 +65,12 @@ def get_alignment_points(file, reffile):
         featurejson = json.load(f)
     timeline = loadABTimeline(featurejson)
     #plot_line(timeline, featurefile.replace('.json', '.png'))
-    cutoff = int(len(timeline)/4)
+    cutoff = int(len(timeline)/8)
     slope, intercept, r_value = stats.linregress(timeline[cutoff:-cutoff])[:3]
     rsquared = r_value**2
     #print str(slope)+'x + '+str(intercept), 'r^2: '+str(r_value**2)
-    plot_line_reg(timeline, slope, intercept, featurefile.replace('.json', '.png'))
-    if rsquared > 0.98:
+    #plot_line_reg(timeline, slope, intercept, featurefile.replace('.json', '.png'))
+    if rsquared > 0.99:
         filedur = get_duration(file)
         refdur = get_duration(reffile)
         start = intercept
@@ -93,9 +93,9 @@ def plot_timelines(timelines):
     fig = plt.figure()
     ax = fig.add_subplot(111)
     max = timelines[0][-1][1]
-    height = 1.0/(len(timelines)+1)
+    height = 1.0/(len(timelines))
     for i in range(len(timelines)):
-        rects = [patches.Rectangle((point[0]/max, 1-((i+1)*height)), point[1]/max, height, alpha=0.3) for point in timelines[i]]
+        rects = [patches.Rectangle((point[0]/max, 1-((i+1)*height)), (point[1]/max)-(point[0]/max), height, alpha=0.3) for point in timelines[i]]
         for r in rects:
             ax.add_patch(r)
     fig.patch.set_facecolor('white')
@@ -114,32 +114,31 @@ def meta_align(audiodir, outdir):
     #get_alignment_points(get_flac_filepaths(dirs[0])[0], reffiles[0])
     
     timelines = [reftimeline]
+    associations = []
     
+    search_deltas = [0,1,-1,2,-2]
     for dir in dirs:
         currentfiles = get_flac_filepaths(dir)
         current_timeline = []
+        current_associations = []
         ref_index = 0
         for i in range(0, len(currentfiles)):
-            if ref_index < len(reffiles):
-                points = get_alignment_points(currentfiles[i], reffiles[ref_index])
-                if points is not None:
-                    current_ref = reftimeline[ref_index]
-                    current_timeline.append([points[0]+current_ref[0], points[1]+current_ref[0]])
-                ref_index += 1
-        print current_timeline
+            for d in search_deltas:
+                j = ref_index+d
+                if 0 <= j and j < len(reffiles):
+                    print i, ref_index, d
+                    points = get_alignment_points(currentfiles[i], reffiles[j])
+                    if points is not None:
+                        current_timeline.append([points[0]+reftimeline[j][0], points[1]+reftimeline[j][0]])
+                        current_associations.append([i,j])
+                        ref_index = j+1
+                        break
+        #print current_timeline
         timelines.append(current_timeline)
+        associations.append(current_associations)
     
     plot_timelines(timelines)
-    
-    #get_alignment_points(files[0], reffiles[0])
-    #get_alignment_points(reffiles[0], files[0])
-    #get_alignment_points(files[1], reffiles[1])
-    #get_alignment_points(reffiles[1], files[1])
-    
-    #plot_example_alignments(files[0], reffiles[0], resultsdir+'match00.json', resultsdir+'match00.png')
-    #plot_example_alignments(files[1], reffiles[0], resultsdir+'match10.json', resultsdir+'match10.png')
-    #plot_example_alignments(files[0], reffiles[1], resultsdir+'match01.json', resultsdir+'match01.png')
-    #plot_example_alignments(files[1], reffiles[1], resultsdir+'match11.json', resultsdir+'match11.png')
+    print associations
     
     #pyplot some alignments
     
@@ -154,37 +153,3 @@ def meta_align(audiodir, outdir):
     #]
 
 meta_align(audiodir, resultsdir)
-
-#create alignment features and tune wavs
-def align_and_tune(self):
-    extract_features(self.original_audio_folder, self.original_features_folder, [features[0]], "jams")
-    tune_wavs(self.original_audio_folder, self.tuned_audio_folder, self.original_features_folder)
-    #normalize_audio(self.tuned_audio_folder)
-
-#recreate alignment features for tuned wavs, separate channels and extract features for separate channels
-def realign_and_separate_and_analyze(self):
-    extract_features(self.tuned_audio_folder, self.tuned_features_folder, [features[0]], "jams")
-    separate_channels(self.tuned_audio_folder, self.channels_audio_folder)
-    copy_features_of_separated_channels(self.tuned_features_folder, self.channels_features_folder)
-    extract_features(self.channels_audio_folder, self.channels_features_folder, features[1:], "jams")
-
-def create_clustering_and_plots(self):
-    ClusterPlotter().saveSegmentAnalysisAndPlots("mfcc", self.channels_features_folder, self.results_folder)
-    ClusterPlotter().saveSegmentAnalysisAndPlots("chroma", self.channels_features_folder, self.results_folder)
-
-def recursively_analyze_the_shit_out_of_this(self, basefolder, subfolder, outfolder):
-    files = os.listdir(basefolder+subfolder)
-    
-    if any(f.endswith('.wav') for f in files):
-        #analyze current folder
-        self.create_current_folders(basefolder, subfolder, outfolder)
-        #if len(os.listdir(self.channels_audio_folder)) <= 1:
-            #self.align_and_tune()
-        #self.realign_and_separate_and_analyze()
-        self.create_clustering_and_plots()
-    
-    #recursively go through all subfolders
-    for file in files:
-        if os.path.isdir(basefolder+subfolder+file):
-            print "\n WORKING ON ", basefolder+subfolder+file, "\n"
-            self.recursively_analyze_the_shit_out_of_this(basefolder, subfolder+file+"/", outfolder)
