@@ -19,6 +19,7 @@ out
 **/*.mp3
 **/*.wav
 **/*.pyc
+**/*.png
 
-audio-light
+audio
 features
