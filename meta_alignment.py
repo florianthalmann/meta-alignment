@@ -1,91 +1,14 @@
-import os, subprocess, json
-from shutil import move
+import os
 import numpy as np
-from scipy import stats
 from matplotlib import pyplot as plt
 import matplotlib.patches as patches
 import seaborn as sns
+import match_aligner as aligner
+import util
 
 
-matchfeature = 'vamp:match-vamp-plugin:match:a_b'
 audiodir = 'audio/'
-featuresdir = 'features/'
 resultsdir = 'results/'
-
-
-def create_folder(path):
-    if not os.path.exists(path):
-        os.makedirs(path)
-    return path
-
-def get_flac_filepaths(dir):
-    return [dir+'/'+f for f in os.listdir(dir) if f.endswith('.flac')]
-
-def get_duration(file):
-    sox_out = subprocess.check_output('sox --i -D ' + file, shell=True)
-    return float(sox_out.replace('\n', ''))
-
-def get_total_audio_duration(dir):
-    duration = 0
-    for file in get_flac_filepaths(dir):
-        duration += get_duration(file)
-    return duration
-
-def extract_match_feature(file, reffile):
-    featurefile = (file.replace(audiodir, '') + '_' + reffile.replace(audiodir, '') + '.json')
-    featurefile = featuresdir + featurefile.replace('/', '_')
-    if not os.path.isfile(featurefile):
-        print 'extracting match feature for ..' + file[file.rfind('/')-15:] + ' and ..'+reffile[reffile.rfind('/')-15:]
-        with open(os.devnull, 'wb') as devnull:
-            subprocess.check_output("sonic-annotator -d vamp:match-vamp-plugin:match:a_b -m " + reffile + " " + file + " -w jams", shell=True, stderr=subprocess.STDOUT)
-            move(reffile[:reffile.rfind('.flac')]+'.json', featurefile)
-    return featurefile
-
-def loadABTimeline(featurejson):
-    abTimes = []
-    for row in featurejson["annotations"][0]["data"]:
-        abTimes.append([float(row["time"]), float(row["value"])])
-    return np.array(abTimes)
-
-def plot_line(line, outfile):
-    fig = plt.figure()
-    plt.plot(line[:,0], line[:,1])
-    fig.patch.set_facecolor('white')
-    plt.savefig(outfile, facecolor='white', edgecolor='none')
-
-def plot_line_reg(line, slope, intercept, outfile):
-    fig = plt.figure()
-    plt.plot(line[:,0], line[:,1])
-    plt.plot(line[:,0], slope*line[:,0]+intercept)
-    fig.patch.set_facecolor('white')
-    plt.savefig(outfile, facecolor='white', edgecolor='none')
-
-def get_alignment_points(file, reffile):
-    featurefile = extract_match_feature(file, reffile)
-    with open(featurefile) as f:
-        featurejson = json.load(f)
-    timeline = loadABTimeline(featurejson)
-    #plot_line(timeline, featurefile.replace('.json', '.png'))
-    cutoff = int(len(timeline)/8)
-    slope, intercept, r_value = stats.linregress(timeline[cutoff:-cutoff])[:3]
-    rsquared = r_value**2
-    #print str(slope)+'x + '+str(intercept), 'r^2: '+str(r_value**2)
-    #plot_line_reg(timeline, slope, intercept, featurefile.replace('.json', '.png'))
-    filedur = get_duration(file)
-    refdur = get_duration(reffile)
-    start = intercept
-    end = filedur*slope+intercept
-    print rsquared, [0, refdur], [start, end]
-    return [start, end], rsquared
-
-def get_ref_timeline(files):
-    timeline = []
-    current_time = 0
-    for file in files:
-        current_duration = get_duration(file)
-        timeline.append([current_time, current_time+current_duration])
-        current_time += current_duration
-    return timeline
 
 def plot_timelines(timelines, outfile):
     fig = plt.figure()
@@ -129,9 +52,9 @@ def fast_match(reffiles, otherfiles, search_deltas, reftimeline, keep_bias=False
                 j = i+d
             if 0 <= j and j < len(reffiles):
                 print i, j, d
-                points, rsquared = get_alignment_points(otherfiles[i], reffiles[j])
+                points, rsquared = aligner.get_alignment_points(otherfiles[i], reffiles[j])
                 if rsquared > 0.99:
-                    timeline.append([points[0]+reftimeline[j][0], points[1]+reftimeline[j][0]])
+                    timeline.append([points[0]+reftimeline[j][0], points[1]+reftimeline[j][1]])
                     associations.append([i,j])
                     confidence_matrix[i][j] = rsquared
                     ref_index = j+1
@@ -149,23 +72,46 @@ def best_match(reffiles, otherfiles, search_deltas, reftimeline):
             j = i+d
             if 0 <= j and j < len(reffiles):
                 print i, j, d
-                points, rsquared = get_alignment_points(otherfiles[i], reffiles[j])
+                points, rsquared = aligner.get_alignment_points(otherfiles[i], reffiles[j])
                 results.append([rsquared, points, j])
                 confidence_matrix[i][j] = rsquared
         results.sort()
-        best_j = results[-1][2]
-        timeline.append([results[-1][1][0]+reftimeline[best_j][0], results[-1][1][1]+reftimeline[best_j][0]])
+        best_j = results[-1][-1]
+        timeline.append([results[-1][1][0]+reftimeline[best_j][0], results[-1][1][1]+reftimeline[best_j][1]])
         associations.append([i,best_j])
-    #NOW RESOLVE CONFLICTS!!!!
+    return timeline, associations, confidence_matrix
+
+def best_match_symm(reffiles, otherfiles, search_deltas, reftimeline):
+    timeline = []
+    associations = []
+    confidence_matrix = np.empty((len(otherfiles), len(reffiles)))
+    confidence_matrix[:] = np.nan
+    for i in range(0, len(otherfiles)):
+        results = []
+        for d in search_deltas:
+            j = i+d
+            if 0 <= j and j < len(reffiles):
+                print i, j, d
+                points, rsquared = aligner.get_alignment_points(otherfiles[i], reffiles[j])
+                points2, rsquared2 = aligner.get_alignment_points(reffiles[j], otherfiles[i])
+                rating = rsquared*rsquared2
+                results.append([rating, rsquared, points, rsquared2, points2, j])
+                confidence_matrix[i][j] = rating
+        results.sort()
+        best_j = results[-1][-1]
+        avg_delta_start = (results[-1][2][0]-results[-1][4][0])/2
+        avg_delta_end = (results[-1][2][1]-results[-1][4][1])/2
+        timeline.append([avg_delta_end+reftimeline[best_j][0], avg_delta_end+reftimeline[best_j][1]])
+        associations.append([i,best_j])
     return timeline, associations, confidence_matrix
 
 def meta_align(audiodir, outdir):
     dirs = filter(os.path.isdir, [audiodir+f for f in os.listdir(audiodir)])
-    durations = map(get_total_audio_duration, dirs)
+    durations = map(util.get_total_audio_duration, dirs)
     ref_index = durations.index(max(durations))
     
-    reffiles = get_flac_filepaths(dirs[ref_index])
-    reftimeline = get_ref_timeline(reffiles)
+    reffiles = util.get_flac_filepaths(dirs[ref_index])
+    reftimeline = util.get_ref_timeline(reffiles)
     dirs.pop(ref_index)
     
     timelines = [reftimeline]
@@ -173,13 +119,13 @@ def meta_align(audiodir, outdir):
     
     search_deltas = [0,1,-1,2,-2]
     for dir in dirs:
-        currentfiles = get_flac_filepaths(dir)
-        timeline, associations, confidence_matrix = best_match(reffiles, currentfiles, search_deltas, reftimeline)
+        currentfiles = util.get_flac_filepaths(dir)
+        timeline, associations, confidence_matrix = best_match_symm(reffiles, currentfiles, search_deltas, reftimeline)
         timelines.append(timeline)
         associations.append(associations)
-        plot_heatmap(confidence_matrix, resultsdir+'confidence_'+dir.replace('/','_')+'_best.png')
+        plot_heatmap(confidence_matrix, resultsdir+'confidence_'+dir.replace('/','_')+'_best_symm.png')
     
-    plot_timelines(timelines, resultsdir+'timelines_best.png')
+    plot_timelines(timelines, resultsdir+'timelines_best_symm.png')
     print associations
     
     #pyplot some alignments
