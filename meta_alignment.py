@@ -1,4 +1,4 @@
-import os
+import os, json
 import numpy as np
 from matplotlib import pyplot as plt
 import matplotlib.patches as patches
@@ -101,8 +101,13 @@ def best_match_symm(reffiles, otherfiles, search_deltas, reftimeline):
         best_j = results[-1][-1]
         avg_delta_start = (results[-1][2][0]-results[-1][4][0])/2
         avg_delta_end = (results[-1][2][1]-results[-1][4][1])/2
-        timeline.append([avg_delta_end+reftimeline[best_j][0], avg_delta_end+reftimeline[best_j][1]])
-        associations.append([i,best_j])
+        if results[-1][0] > 0.999:
+            timeline.append([avg_delta_end+reftimeline[best_j][0], avg_delta_end+reftimeline[best_j][1]])
+            print "RESULTING TIMEPOINTS: ", timeline[-1], results[-1][0]
+            associations.append([True, best_j, results[-1][0]])
+        else:
+            print "NO ASSOC GOOD ENOUGH", results[-1][0]
+            associations.append([False, best_j, results[-1][0]])
     return timeline, associations, confidence_matrix
 
 def meta_align(audiodir, outdir):
@@ -115,18 +120,21 @@ def meta_align(audiodir, outdir):
     dirs.pop(ref_index)
     
     timelines = [reftimeline]
-    associations = []
+    results = {}
+    results['associations'] = []
     
     search_deltas = [0,1,-1,2,-2]
     for dir in dirs:
         currentfiles = util.get_flac_filepaths(dir)
         timeline, associations, confidence_matrix = best_match_symm(reffiles, currentfiles, search_deltas, reftimeline)
         timelines.append(timeline)
-        associations.append(associations)
+        results['associations'].append(associations)
         plot_heatmap(confidence_matrix, resultsdir+'confidence_'+dir.replace('/','_')+'_best_symm.png')
     
     plot_timelines(timelines, resultsdir+'timelines_best_symm.png')
-    print associations
+    #results['timelines'] = timelines
+    with open(resultsdir+'results_best_symm.json', 'w') as resultsfile:
+        json.dump(results, resultsfile)
     
     #pyplot some alignments
     

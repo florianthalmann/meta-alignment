@@ -55,5 +55,5 @@ def get_alignment_points(file, reffile):
     refdur = util.get_duration(reffile)
     delta_start = intercept
     delta_end = (filedur*slope+intercept)-refdur
-    print rsquared, [0, refdur], [delta_start, delta_end]
+    #print rsquared, [0, refdur], [delta_start, delta_end]
     return [delta_start, delta_end], rsquared
