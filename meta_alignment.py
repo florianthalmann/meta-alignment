@@ -3,12 +3,13 @@ import numpy as np
 from matplotlib import pyplot as plt
 import matplotlib.patches as patches
 import seaborn as sns
-import match_aligner as aligner
+#import match_aligner as aligner
+import hough_aligner as aligner
 import util
 
 
 audiodir = 'audio/'
-resultsdir = 'results/'
+resultsdir = 'results_hough/'
 
 def plot_timelines(timelines, outfile):
     fig = plt.figure()
@@ -101,7 +102,7 @@ def best_match_symm(reffiles, otherfiles, search_deltas, reftimeline):
         best_j = results[-1][-1]
         avg_delta_start = (results[-1][2][0]-results[-1][4][0])/2
         avg_delta_end = (results[-1][2][1]-results[-1][4][1])/2
-        if results[-1][0] > 0.999:
+        if results[-1][0] > 0.000001:#0.999:
             timeline.append([avg_delta_end+reftimeline[best_j][0], avg_delta_end+reftimeline[best_j][1]])
             print "RESULTING TIMEPOINTS: ", timeline[-1], results[-1][0]
             associations.append([True, best_j, results[-1][0]])
