@@ -3,13 +3,14 @@ import numpy as np
 from matplotlib import pyplot as plt
 import matplotlib.patches as patches
 import seaborn as sns
-#import match_aligner as aligner
-import hough_aligner as aligner
+import match_aligner
+import hough_aligner
+import fprint_aligner
 import util
 
-
 audiodir = 'audio/'
-resultsdir = 'results_hough/'
+resultsdir = 'results_fprint/'
+aligner = fprint_aligner
 
 def plot_timelines(timelines, outfile):
     fig = plt.figure()
@@ -25,10 +26,10 @@ def plot_timelines(timelines, outfile):
 
 def plot_heatmap(matrix, outfile):
     f, ax = plt.subplots(figsize=(11, 9))
-    
+
     # Generate a custom diverging colormap
     cmap = sns.diverging_palette(220, 10, as_cmap=True)
-    
+
     # Draw the heatmap with the mask and correct aspect ratio
     g = sns.heatmap(matrix, cmap=cmap, #vmax=matrix.max(),
                 #square=True, xticklabels=5, yticklabels=5,#xticklabels=[-5,-4,-3,-2,-1,0,1,2,3,4,5,6,7], yticklabels=[0,1,2,3,4,5,6,7,8,9],
@@ -100,8 +101,9 @@ def best_match_symm(reffiles, otherfiles, search_deltas, reftimeline):
                 confidence_matrix[i][j] = rating
         results.sort()
         best_j = results[-1][-1]
-        avg_delta_start = (results[-1][2][0]-results[-1][4][0])/2
-        avg_delta_end = (results[-1][2][1]-results[-1][4][1])/2
+        if results[-1][2] and results[-1][4]:
+            avg_delta_start = (results[-1][2][0]-results[-1][4][0])/2
+            avg_delta_end = (results[-1][2][1]-results[-1][4][1])/2
         if results[-1][0] > 0.000001:#0.999:
             timeline.append([avg_delta_end+reftimeline[best_j][0], avg_delta_end+reftimeline[best_j][1]])
             print "RESULTING TIMEPOINTS: ", timeline[-1], results[-1][0]
@@ -115,15 +117,15 @@ def meta_align(audiodir, outdir):
     dirs = filter(os.path.isdir, [audiodir+f for f in os.listdir(audiodir)])
     durations = map(util.get_total_audio_duration, dirs)
     ref_index = durations.index(max(durations))
-    
+
     reffiles = util.get_flac_filepaths(dirs[ref_index])
     reftimeline = util.get_ref_timeline(reffiles)
     dirs.pop(ref_index)
-    
+
     timelines = [reftimeline]
     results = {}
     results['associations'] = []
-    
+
     search_deltas = [0,1,-1,2,-2]
     for dir in dirs:
         currentfiles = util.get_flac_filepaths(dir)
@@ -131,17 +133,17 @@ def meta_align(audiodir, outdir):
         timelines.append(timeline)
         results['associations'].append(associations)
         plot_heatmap(confidence_matrix, resultsdir+'confidence_'+dir.replace('/','_')+'_best_symm.png')
-    
+
     plot_timelines(timelines, resultsdir+'timelines_best_symm.png')
     #results['timelines'] = timelines
     with open(resultsdir+'results_best_symm.json', 'w') as resultsfile:
         json.dump(results, resultsfile)
-    
+
     #pyplot some alignments
-    
+
     #first find show with most audio -> becomes reference
     #then align first of each show
-    
+
     #OUTPUT IS A NEW TIMELINE WITH REFERENCES TO EACH OF THE RECORDINGS, e.g.
     #[
         #{time:0, refs:[{rec:'dirname', file:'filename', time:0.1}, {rec:'dirname2', file:'filename2', time:0.5}]},

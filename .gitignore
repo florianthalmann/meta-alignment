@@ -23,8 +23,5 @@ out
 
 audio
 features
-results
-results_old
-results_ewert
-results_hough
+results*
 audfprint
