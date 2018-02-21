@@ -25,3 +25,5 @@ audio
 features
 results*
 audfprint
+qfp/
+qfp.db

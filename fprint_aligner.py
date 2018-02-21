@@ -31,7 +31,7 @@ def get_alignment_points(file, reffile):
             filedur = util.get_duration(file)
             refdur = util.get_duration(reffile)
             delta_start = t2-t1
-            delta_end = (filedur+delta_start)-refdur
+            delta_end = delta_start+filedur #assume slope 1
             return [delta_start, delta_end], 1
     return None, 0
 
