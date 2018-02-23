@@ -1,4 +1,4 @@
-import os, json
+import os, json, itertools
 import numpy as np
 from matplotlib import pyplot as plt
 import matplotlib.patches as patches
@@ -25,7 +25,9 @@ def plot_timelines(timelines, outfile):
     plt.savefig(outfile, facecolor='white', edgecolor='none')
 
 def plot_heatmap(matrix, outfile):
-    f, ax = plt.subplots(figsize=(11, 9))
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.set_axis_bgcolor('white')
 
     # Generate a custom diverging colormap
     cmap = sns.diverging_palette(220, 10, as_cmap=True)
@@ -35,7 +37,7 @@ def plot_heatmap(matrix, outfile):
                 #square=True, xticklabels=5, yticklabels=5,#xticklabels=[-5,-4,-3,-2,-1,0,1,2,3,4,5,6,7], yticklabels=[0,1,2,3,4,5,6,7,8,9],
                 #linewidths=.5, cbar_kws={"shrink": .5}, ax=ax,
                 mask=np.isnan(matrix))
-    sns.set_style("dark")
+    #sns.set_style("dark")
     #g.set(xlabel="segment duration "+r"$2^\sigma$", ylabel="number of segments "+r"$2^\rho$")
     plt.savefig(outfile)
 
@@ -151,4 +153,68 @@ def meta_align(audiodir, outdir):
         #...
     #]
 
-meta_align(audiodir, resultsdir)
+def get_offset_matrix(files):
+    fr = range(len(files))
+    results = [[0 for _ in fr] for _ in fr]
+    confs = [[0 for _ in fr] for _ in fr]
+    for i, j in itertools.product(fr, fr):
+        results[i][j], confs[i][j] = aligner.get_alignment_points(files[i], files[j])
+    return np.vectorize(lambda r: r[0] if r is not None else None)(results)
+
+def add_to_histogram(value, histogram):
+    if not np.isnan(value):
+        if value not in histogram:
+            histogram[value] = 1
+        else:
+            histogram[value] += 1
+
+def validate_offsets(offsets):
+    #algorithm from bano2015discovery, casanovas2015audio
+    plot_heatmap(offsets, resultsdir+'offsets.png')
+    rounded = np.round(offsets)
+    validated = np.zeros(offsets.shape)
+    for i, j in itertools.product(range(len(offsets)), range(len(offsets))):
+        histogram = {}
+        for k in range(len(offsets)):
+            add_to_histogram(rounded[i][k] + rounded[k][j], histogram)
+            add_to_histogram(-1*(rounded[j][k] + rounded[k][i]), histogram)
+        if len(histogram) > 0:
+            validated[i][j] = max(histogram, key=histogram.get)
+        else:
+            validated[i][j] = np.nan
+    plot_heatmap(validated, resultsdir+'offsets_val_dec.png')
+
+def meta_align_construct_timeline_iterative(audiodir, outdir):
+    dirs = filter(os.path.isdir, [audiodir+f for f in os.listdir(audiodir)])
+
+    current_index = 0
+    current_files = []
+
+    for i in range(2):#while len(currentfiles) > 0:
+        for d in dirs:
+            current_files.append(util.get_flac_filepaths(d)[current_index])
+        offset_matrix = get_offset_matrix(current_files)
+        #set diagonal to 0!
+        print np.matrix(offset_matrix)
+        #offset_matrix = validate_offsets(offset_matrix)
+        #print offset_matrix
+        current_index += 1
+
+def meta_align_construct_timeline(audiodir, outdir):
+    dirs = filter(os.path.isdir, [audiodir+f for f in os.listdir(audiodir)])
+    files = [f for d in dirs for f in util.get_flac_filepaths(d)]
+    offset_matrix = get_offset_matrix(files)
+    offset_matrix = validate_offsets(offset_matrix)
+    timelines = []
+    for f in util.get_flac_filepaths(dirs[0]):
+        timeline = []
+        #timeline.append()
+
+
+    #for i in range(1, len(dirs)):
+    #    fs = util.get_flac_filepaths(dirs[i])
+#        for f in :
+#            offset = offset_matrix[files.index()]
+#            timeline.append([offset, offset+util.get_duration(f)])
+
+meta_align_construct_timeline(audiodir, resultsdir)
