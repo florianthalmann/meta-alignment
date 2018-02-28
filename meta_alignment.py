@@ -27,7 +27,7 @@ def plot_timelines(timelines, outfile):
 def plot_heatmap(matrix, outfile):
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    ax.set_axis_bgcolor('white')
+    ax.set_facecolor('white')
 
     # Generate a custom diverging colormap
     cmap = sns.diverging_palette(220, 10, as_cmap=True)
@@ -170,7 +170,6 @@ def add_to_histogram(value, histogram):
 
 def validate_offsets(offsets):
     #algorithm from bano2015discovery, casanovas2015audio
-    plot_heatmap(offsets, resultsdir+'offsets.png')
     rounded = np.round(offsets)
     validated = np.zeros(offsets.shape)
     for i, j in itertools.product(range(len(offsets)), range(len(offsets))):
@@ -182,7 +181,7 @@ def validate_offsets(offsets):
             validated[i][j] = max(histogram, key=histogram.get)
         else:
             validated[i][j] = np.nan
-    plot_heatmap(validated, resultsdir+'offsets_val_dec.png')
+    return validated
 
 def meta_align_construct_timeline_iterative(audiodir, outdir):
     dirs = filter(os.path.isdir, [audiodir+f for f in os.listdir(audiodir)])
@@ -200,21 +199,44 @@ def meta_align_construct_timeline_iterative(audiodir, outdir):
         #print offset_matrix
         current_index += 1
 
+def construct_timelines(offset_matrix, dirs, files):
+    timelines = [[]]
+    t = 0
+    for f in util.get_flac_filepaths(dirs[0]):
+        dur = util.get_duration(f)
+        timelines[0].append([t, t+dur])
+        t += dur
+    for d in range(1, len(dirs)):
+        fs = util.get_flac_filepaths(dirs[d])
+        timeline = []
+        for f in fs:
+            i = files.index(f)
+            offsets = offset_matrix[i]
+            oe = enumerate(offsets)
+            ref_index = next((j for j, o in oe if j != i and not np.isnan(o)), None)
+            #TODO add way of dealing with ref_index not in first rec
+            #TODO anyway, really construct timeline now!!
+            if ref_index and ref_index < len(timelines[0]):
+                #print i, ref_index, offsets[ref_index]
+                ref = timelines[0][ref_index]
+                offset = ref[0]+offsets[ref_index]
+                timeline.append([offset, offset+util.get_duration(f)])
+        timelines.append(timeline)
+    return timelines
+
 def meta_align_construct_timeline(audiodir, outdir):
     dirs = filter(os.path.isdir, [audiodir+f for f in os.listdir(audiodir)])
     files = [f for d in dirs for f in util.get_flac_filepaths(d)]
+
     offset_matrix = get_offset_matrix(files)
+    plot_heatmap(offset_matrix, resultsdir+'offsets_raw.png')
+    timelines = construct_timelines(offset_matrix, dirs, files)
+    plot_timelines(timelines, resultsdir+'timelines_fprint_raw.png')
+
     offset_matrix = validate_offsets(offset_matrix)
-    timelines = []
-    for f in util.get_flac_filepaths(dirs[0]):
-        timeline = []
-        #timeline.append()
+    plot_heatmap(offset_matrix, resultsdir+'offsets_val.png')
+    timelines = construct_timelines(offset_matrix, dirs, files)
+    plot_timelines(timelines, resultsdir+'timelines_fprint_val.png')
 
-
-    #for i in range(1, len(dirs)):
-    #    fs = util.get_flac_filepaths(dirs[i])
-#        for f in :
-#            offset = offset_matrix[files.index()]
-#            timeline.append([offset, offset+util.get_duration(f)])
 
 meta_align_construct_timeline(audiodir, resultsdir)
