@@ -153,13 +153,23 @@ def meta_align(audiodir, outdir):
         #...
     #]
 
-def get_offset_matrix(files):
-    fr = range(len(files))
-    results = [[0 for _ in fr] for _ in fr]
-    confs = [[0 for _ in fr] for _ in fr]
-    for i, j in itertools.product(fr, fr):
-        results[i][j], confs[i][j] = aligner.get_alignment_points(files[i], files[j])
-    return np.vectorize(lambda r: r[0] if r is not None else None)(results)
+#pass in list of recordings, which in turn are lists of segments
+#and rrange the range in which segments are compared, e.g. 2 = [-2,-1,0,1,2]
+def get_offset_matrix(recordings, rrange):
+    segments = [seg for rec in recordings for seg in rec]
+    offsets = np.full((len(segments), len(segments)), np.nan)
+    confidences = np.full((len(segments), len(segments)), np.nan)
+    #go through all unequal pairs of recordings
+    for r, s in itertools.product(recordings, recordings):
+        if r != s:
+            #go through all adjacent recordings
+            for i, j in itertools.product(range(len(r)), range(len(s))):
+                if abs(i-j) <= rrange:
+                    ii, jj = segments.index(r[i]), segments.index(s[j])
+                    rs, confidences[ii,jj] = aligner.get_alignment_points(r[i], s[j])
+                    if rs is not None:
+                        offsets[ii,jj] = rs[0]
+    return offsets
 
 def add_to_histogram(value, histogram):
     if not np.isnan(value):
@@ -173,14 +183,15 @@ def validate_offsets(offsets):
     rounded = np.round(offsets)
     validated = np.zeros(offsets.shape)
     for i, j in itertools.product(range(len(offsets)), range(len(offsets))):
-        histogram = {}
-        for k in range(len(offsets)):
-            add_to_histogram(rounded[i][k] + rounded[k][j], histogram)
-            add_to_histogram(-1*(rounded[j][k] + rounded[k][i]), histogram)
-        if len(histogram) > 0:
-            validated[i][j] = max(histogram, key=histogram.get)
-        else:
-            validated[i][j] = np.nan
+        if i != j:
+            histogram = {}
+            for k in range(len(offsets)):
+                add_to_histogram(rounded[i][k] + rounded[k][j], histogram)
+                add_to_histogram(-1*(rounded[j][k] + rounded[k][i]), histogram)
+            if len(histogram) > 0:
+                validated[i][j] = max(histogram, key=histogram.get)
+            else:
+                validated[i][j] = np.nan
     return validated
 
 def meta_align_construct_timeline_iterative(audiodir, outdir):
@@ -199,18 +210,20 @@ def meta_align_construct_timeline_iterative(audiodir, outdir):
         #print offset_matrix
         current_index += 1
 
-def construct_timelines(offset_matrix, dirs, files):
+def construct_timelines(offset_matrix, dirs, recordings):
+    segments = [seg for rec in recordings for seg in rec]
     timelines = [[]]
     t = 0
+    #take first as ref timeline
     for f in util.get_flac_filepaths(dirs[0]):
         dur = util.get_duration(f)
         timelines[0].append([t, t+dur])
         t += dur
+    #go through all others and compare to first TODO GENERALIZE
     for d in range(1, len(dirs)):
-        fs = util.get_flac_filepaths(dirs[d])
         timeline = []
-        for f in fs:
-            i = files.index(f)
+        for f in recordings[d]:
+            i = segments.index(f)
             offsets = offset_matrix[i]
             oe = enumerate(offsets)
             ref_index = next((j for j, o in oe if j != i and not np.isnan(o)), None)
@@ -226,17 +239,17 @@ def construct_timelines(offset_matrix, dirs, files):
 
 def meta_align_construct_timeline(audiodir, outdir):
     dirs = filter(os.path.isdir, [audiodir+f for f in os.listdir(audiodir)])
-    files = [f for d in dirs for f in util.get_flac_filepaths(d)]
+    recordings = [util.get_flac_filepaths(d) for d in dirs]
 
-    offset_matrix = get_offset_matrix(files)
-    plot_heatmap(offset_matrix, resultsdir+'offsets_raw.png')
-    timelines = construct_timelines(offset_matrix, dirs, files)
-    plot_timelines(timelines, resultsdir+'timelines_fprint_raw.png')
+    offset_matrix = get_offset_matrix(recordings, 5)
+    plot_heatmap(offset_matrix, resultsdir+'offsets_raw2.png')
+    timelines = construct_timelines(offset_matrix, dirs, recordings)
+    plot_timelines(timelines, resultsdir+'timelines_fprint_raw2.png')
 
     offset_matrix = validate_offsets(offset_matrix)
-    plot_heatmap(offset_matrix, resultsdir+'offsets_val.png')
-    timelines = construct_timelines(offset_matrix, dirs, files)
-    plot_timelines(timelines, resultsdir+'timelines_fprint_val.png')
+    plot_heatmap(offset_matrix, resultsdir+'offsets_val2.png')
+    timelines = construct_timelines(offset_matrix, dirs, recordings)
+    plot_timelines(timelines, resultsdir+'timelines_fprint_val2.png')
 
 
 meta_align_construct_timeline(audiodir, resultsdir)
