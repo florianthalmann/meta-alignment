@@ -5,20 +5,19 @@ import util
 matches = {}
 
 def init():
-    with open('results/fp_matches_tiny.json') as f:
-        matchjson = [m[0] for ms in json.load(f) for m in ms]
-        for m in matchjson:
-            if "Matched" in m:
-                d = float(between(m, "Matched ", " s "))
-                t1 = float(between(m, " at ", " s "))
-                f1 = between(m, " in ", " to ")
-                t2 = float(between(m, " time ", " s "))
-                f2 = between(m, " in ", " with ", 1)
-                if f1 not in matches:
-                    matches[f1] = {}
-                matches[f1][f2] = [t1, t2, d]
-            elif "NOMATCH" in m:
-                None
+    with open('matches/audfprint.json') as f:
+        for x, ys in json.load(f).iteritems():
+            for y, m in ys.iteritems():
+                m = m[0]
+                if "Matched" in m:
+                    d = float(between(m, "Matched ", " s "))
+                    t1 = float(between(m, " at ", " s "))
+                    f1 = between(m, " in ", " to ")
+                    t2 = float(between(m, " time ", " s "))
+                    f2 = between(m, " in ", " with ", 1)
+                    if f1 not in matches:
+                        matches[f1] = {}
+                    matches[f1][f2] = [t1, t2, d]
 
 def between(string, s1, s2, index=0):
     string = string.split(s1)[index+1]

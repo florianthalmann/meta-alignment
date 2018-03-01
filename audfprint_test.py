@@ -2,7 +2,7 @@ import os, json
 from audfprint import audfprint as fp
 
 audiodir = 'audio/'
-db_dir = "/Volumes/gspeed1/florian/meta-alignment/dbs/audfprint/"
+db_dir = "dbs/audfprint/"
 
 default_config = ['--density', '70', '--fanout', '8', '--bucketsize', '500',
     '--search-depth', '2000', '--min-count', '5']
