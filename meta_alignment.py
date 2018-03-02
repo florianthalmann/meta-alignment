@@ -237,17 +237,22 @@ def construct_timelines(offset_matrix, dirs, recordings):
         timelines.append(timeline)
     return timelines
 
+def show_asymmetry(matrix):
+    return np.add(matrix, np.transpose(matrix))
+
 def meta_align_construct_timeline(audiodir, outdir):
     dirs = filter(os.path.isdir, [audiodir+f for f in os.listdir(audiodir)])
     recordings = [util.get_flac_filepaths(d) for d in dirs]
 
     offset_matrix = get_offset_matrix(recordings, 5)
     plot_heatmap(offset_matrix, resultsdir+'offsets_raw2.png')
+    plot_heatmap(show_asymmetry(offset_matrix), resultsdir+'offsets_raw2as.png')
     timelines = construct_timelines(offset_matrix, dirs, recordings)
     plot_timelines(timelines, resultsdir+'timelines_fprint_raw2.png')
 
     offset_matrix = validate_offsets(offset_matrix)
     plot_heatmap(offset_matrix, resultsdir+'offsets_val2.png')
+    plot_heatmap(show_asymmetry(offset_matrix), resultsdir+'offsets_val2as.png')
     timelines = construct_timelines(offset_matrix, dirs, recordings)
     plot_timelines(timelines, resultsdir+'timelines_fprint_val2.png')
 
