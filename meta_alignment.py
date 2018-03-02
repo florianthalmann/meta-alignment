@@ -1,5 +1,6 @@
 import os, json, itertools
 import numpy as np
+from scipy.sparse.csgraph import minimum_spanning_tree, floyd_warshall
 from matplotlib import pyplot as plt
 import matplotlib.patches as patches
 import seaborn as sns
@@ -36,7 +37,7 @@ def plot_heatmap(matrix, outfile):
     g = sns.heatmap(matrix, cmap=cmap, #vmax=matrix.max(),
                 #square=True, xticklabels=5, yticklabels=5,#xticklabels=[-5,-4,-3,-2,-1,0,1,2,3,4,5,6,7], yticklabels=[0,1,2,3,4,5,6,7,8,9],
                 #linewidths=.5, cbar_kws={"shrink": .5}, ax=ax,
-                mask=np.isnan(matrix))
+                mask=np.isnan(matrix), center=0)
     #sns.set_style("dark")
     #g.set(xlabel="segment duration "+r"$2^\sigma$", ylabel="number of segments "+r"$2^\rho$")
     plt.savefig(outfile)
@@ -178,7 +179,7 @@ def add_to_histogram(value, histogram):
         else:
             histogram[value] += 1
 
-def validate_offsets(offsets):
+def validate_offsets_histo(offsets):
     #algorithm from bano2015discovery, casanovas2015audio
     rounded = np.round(offsets)
     validated = np.zeros(offsets.shape)
@@ -193,6 +194,24 @@ def validate_offsets(offsets):
             else:
                 validated[i][j] = np.nan
     return validated
+
+def validate_offsets_mst(offsets):
+    #algorithm from kammerl2014temporal
+    penalty = lambda i,j,k: abs(offsets[i][j]+offsets[j][k]+offsets[k][i])
+    #calculate edge consistencies
+    consistencies = np.zeros(offsets.shape)
+    for i, j in itertools.product(range(len(offsets)), range(len(offsets))):
+        penalties = [penalty(i,j,k) for k in range(len(offsets))]
+        penalties = [p for p in penalties if not np.isnan(p)]
+        if len(penalties) > 0:
+            consistencies[i,j] = sum(penalties)
+    #calculate minimum spanning tree
+    mst = minimum_spanning_tree(consistencies)#.toarray()
+    trans_closure = floyd_warshall(mst)
+    #TODO this can be lowered to get rid of misalignments! e.g. > 200 works well
+    trans_closure[trans_closure >= np.inf] = np.nan
+    trans_closure = np.fmin(trans_closure, -1*np.transpose(trans_closure))
+    return trans_closure
 
 def meta_align_construct_timeline_iterative(audiodir, outdir):
     dirs = filter(os.path.isdir, [audiodir+f for f in os.listdir(audiodir)])
@@ -245,16 +264,21 @@ def meta_align_construct_timeline(audiodir, outdir):
     recordings = [util.get_flac_filepaths(d) for d in dirs]
 
     offset_matrix = get_offset_matrix(recordings, 5)
-    plot_heatmap(offset_matrix, resultsdir+'offsets_raw2.png')
-    plot_heatmap(show_asymmetry(offset_matrix), resultsdir+'offsets_raw2as.png')
+    plot_heatmap(offset_matrix, resultsdir+'offsets_fprint_raw.png')
+    #plot_heatmap(show_asymmetry(offset_matrix), resultsdir+'offsets_raw2as.png')
     timelines = construct_timelines(offset_matrix, dirs, recordings)
-    plot_timelines(timelines, resultsdir+'timelines_fprint_raw2.png')
+    plot_timelines(timelines, resultsdir+'timelines_fprint_raw.png')
 
-    offset_matrix = validate_offsets(offset_matrix)
-    plot_heatmap(offset_matrix, resultsdir+'offsets_val2.png')
-    plot_heatmap(show_asymmetry(offset_matrix), resultsdir+'offsets_val2as.png')
-    timelines = construct_timelines(offset_matrix, dirs, recordings)
-    plot_timelines(timelines, resultsdir+'timelines_fprint_val2.png')
+    mst_matrix = validate_offsets_mst(offset_matrix)
+    plot_heatmap(mst_matrix, resultsdir+'offsets_fprint_mst.png')
+    timelines = construct_timelines(mst_matrix, dirs, recordings)
+    plot_timelines(timelines, resultsdir+'timelines_fprint_mst.png')
+
+    histo_matrix = validate_offsets_histo(offset_matrix)
+    plot_heatmap(histo_matrix, resultsdir+'offsets_fprint_histo.png')
+    #plot_heatmap(show_asymmetry(offset_matrix), resultsdir+'offsets_val2as.png')
+    timelines = construct_timelines(histo_matrix, dirs, recordings)
+    plot_timelines(timelines, resultsdir+'timelines_fprint_histo.png')
 
 
 meta_align_construct_timeline(audiodir, resultsdir)
