@@ -7,11 +7,13 @@ import seaborn as sns
 import match_aligner
 import hough_aligner
 import fprint_aligner
+import panako_aligner
 import util
 
 audiodir = 'audio/'
-resultsdir = 'results_fprint/'
-aligner = fprint_aligner
+aligner = panako_aligner
+aligner_name = 'panako'
+resultsdir = 'results_'+aligner_name+'/'
 
 def plot_timelines(timelines, outfile):
     fig = plt.figure()
@@ -259,26 +261,24 @@ def construct_timelines(offset_matrix, dirs, recordings):
 def show_asymmetry(matrix):
     return np.add(matrix, np.transpose(matrix))
 
+def construct_and_plot(offset_matrix, name, dirs, recordings):
+    plot_heatmap(offset_matrix, resultsdir+'offsets_'+aligner_name+'_'+name+'.png')
+    #plot_heatmap(show_asymmetry(offset_matrix), resultsdir+'offsets_raw2as.png')
+    timelines = construct_timelines(offset_matrix, dirs, recordings)
+    plot_timelines(timelines, resultsdir+'timelines_'+aligner_name+'_'+name+'.png')
+
 def meta_align_construct_timeline(audiodir, outdir):
     dirs = filter(os.path.isdir, [audiodir+f for f in os.listdir(audiodir)])
     recordings = [util.get_flac_filepaths(d) for d in dirs]
 
     offset_matrix = get_offset_matrix(recordings, 5)
-    plot_heatmap(offset_matrix, resultsdir+'offsets_fprint_raw.png')
-    #plot_heatmap(show_asymmetry(offset_matrix), resultsdir+'offsets_raw2as.png')
-    timelines = construct_timelines(offset_matrix, dirs, recordings)
-    plot_timelines(timelines, resultsdir+'timelines_fprint_raw.png')
+    construct_and_plot(offset_matrix, 'raw', dirs, recordings)
 
     mst_matrix = validate_offsets_mst(offset_matrix)
-    plot_heatmap(mst_matrix, resultsdir+'offsets_fprint_mst.png')
-    timelines = construct_timelines(mst_matrix, dirs, recordings)
-    plot_timelines(timelines, resultsdir+'timelines_fprint_mst.png')
+    construct_and_plot(mst_matrix, 'mst', dirs, recordings)
 
     histo_matrix = validate_offsets_histo(offset_matrix)
-    plot_heatmap(histo_matrix, resultsdir+'offsets_fprint_histo.png')
-    #plot_heatmap(show_asymmetry(offset_matrix), resultsdir+'offsets_val2as.png')
-    timelines = construct_timelines(histo_matrix, dirs, recordings)
-    plot_timelines(timelines, resultsdir+'timelines_fprint_histo.png')
+    construct_and_plot(histo_matrix, 'histo', dirs, recordings)
 
 
 meta_align_construct_timeline(audiodir, resultsdir)

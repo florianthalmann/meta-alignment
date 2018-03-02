@@ -1,6 +1,6 @@
 import os, json, subprocess
 
-panako_db_dir = "/Volumes/gspeed1/florian/meta-alignment/dbs/panako/"
+panako_db_dir = "dbs/panako/"
 audiodir = "audio/"
 
 dirs = filter(os.path.isdir, [audiodir+f for f in os.listdir(audiodir)])
@@ -35,4 +35,4 @@ def test_match():
 
 #make_db()
 
-test_match()
+#test_match()
