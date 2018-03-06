@@ -11,8 +11,8 @@ import panako_aligner
 import util
 
 audiodir = 'audio/'
-aligner = panako_aligner
-aligner_name = 'panako'
+aligner = match_aligner
+aligner_name = 'match'
 resultsdir = 'results_'+aligner_name+'/'
 
 def plot_timelines(timelines, outfile):
@@ -158,7 +158,7 @@ def meta_align(audiodir, outdir):
 
 #pass in list of recordings, which in turn are lists of segments
 #and rrange the range in which segments are compared, e.g. 2 = [-2,-1,0,1,2]
-def get_offset_matrix(recordings, rrange):
+def get_offset_matrix(recordings, rrange, aligner):
     segments = [seg for rec in recordings for seg in rec]
     offsets = np.full((len(segments), len(segments)), np.nan)
     confidences = np.full((len(segments), len(segments)), np.nan)
@@ -266,12 +266,13 @@ def construct_and_plot(offset_matrix, name, dirs, recordings):
     #plot_heatmap(show_asymmetry(offset_matrix), resultsdir+'offsets_raw2as.png')
     timelines = construct_timelines(offset_matrix, dirs, recordings)
     plot_timelines(timelines, resultsdir+'timelines_'+aligner_name+'_'+name+'.png')
+    return timelines
 
-def meta_align_construct_timeline(audiodir, outdir):
+def meta_align_construct_timeline(audiodir, outdir, aligner):
     dirs = filter(os.path.isdir, [audiodir+f for f in os.listdir(audiodir)])
     recordings = [util.get_flac_filepaths(d) for d in dirs]
 
-    offset_matrix = get_offset_matrix(recordings, 5)
+    offset_matrix = get_offset_matrix(recordings, 2, aligner)
     construct_and_plot(offset_matrix, 'raw', dirs, recordings)
 
     mst_matrix = validate_offsets_mst(offset_matrix)
@@ -280,5 +281,35 @@ def meta_align_construct_timeline(audiodir, outdir):
     histo_matrix = validate_offsets_histo(offset_matrix)
     construct_and_plot(histo_matrix, 'histo', dirs, recordings)
 
+#tolerance in secs, for now just beginnings TODO also evaluate segment ends
+def evaluate_alignment(alignment, groundtruth, tolerance=0.5):
+    correct = 0.0
+    aligned = float(sum([len(rec) for rec in alignment]))
+    total = float(sum([len(rec) for rec in groundtruth]))
+    total_deviation = 0
+    for a, g in zip(alignment, groundtruth):
+        for s1, s2 in zip(a, g):
+            deviation = abs(s1[0]-s2[0])
+            if deviation < tolerance:
+                correct += 1
+            total_deviation += deviation
+    print "aligned:", aligned / total, "correct:", correct / total, "deviation:",  total_deviation
+    return aligned / total, correct / total, total_deviation
 
-meta_align_construct_timeline(audiodir, resultsdir)
+def test_eval():
+    dirs = filter(os.path.isdir, [audiodir+f for f in os.listdir(audiodir)])
+    recordings = [util.get_flac_filepaths(d) for d in dirs]
+
+    #mock groundtruth for now
+    print "groundtruth"
+    match = get_offset_matrix(recordings, 2, fprint_aligner)
+    groundtruth = construct_timelines(match, dirs, recordings)
+    print "aligning"
+    fprint = get_offset_matrix(recordings, 2, panako_aligner)
+    print "constructing"
+    alignment = construct_timelines(fprint, dirs, recordings)
+
+    evaluate_alignment(alignment, groundtruth)
+
+#meta_align_construct_timeline(audiodir, resultsdir, audfprint_aligner)
+test_eval()

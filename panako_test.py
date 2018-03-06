@@ -25,6 +25,8 @@ def test_match():
             matches[f] = {}
             for e in dirs:
                 dbname = e.replace('audio/','')
+                #THIS DOESNT WORK, PROB DUE TO CROSSCOVARIANCE FAILING!!
+                #cmd = "panako sync "+panako_db_dir+dbname+" "+f
                 cmd = "panako query NFFT_MAPDB_DATABASE="+panako_db_dir+dbname+" MAX_FILE_SIZE=200000000 "+f
                 p = subprocess.Popen(cmd.format(f), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 stdout, stderr = p.communicate()
