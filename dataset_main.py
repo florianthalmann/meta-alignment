@@ -8,8 +8,8 @@ panako_matches = "ISMIR18/matches/panako.json"
 fprint_db = "ISMIR18/dbs/audfprint/"
 fprint_matches = "ISMIR18/matches/audfprint.json"
 
-panako_init.make_dbs(audiodir, panako_db, 2)
-panako_init.find_all_matches(audiodir, panako_db, panako_matches, 2)
+panako_init.make_dbs(audiodir, panako_db)
+panako_init.find_all_matches(audiodir, panako_db, panako_matches)
 
-audfprint_init.make_dbs(audiodir, fprint_db, 2)
-audfprint_init.find_all_matches(audiodir, fprint_db, fprint_matches, 2)
+audfprint_init.make_dbs(audiodir, fprint_db)
+audfprint_init.find_all_matches(audiodir, fprint_db, fprint_matches)
