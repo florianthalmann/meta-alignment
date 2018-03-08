@@ -1,5 +1,16 @@
 import os, subprocess
 
+audio_formats = ['.flac', '.mp3', '.shn', '.wav']
+
+def get_subdirs(dir, count=None):
+    dirs = filter(os.path.isdir, [dir+f for f in os.listdir(dir)])
+    if count is not None:
+        dirs = dirs[:count]
+    return dirs
+
+def get_audiofiles(dir):
+    is_audio = lambda f: any(f.endswith(e) for e in audio_formats)
+    return [dir+'/'+f for f in os.listdir(dir) if is_audio(f)]
 
 def get_common_path(pa, pb):
     """ returns the longest common subpath of sa and sb """

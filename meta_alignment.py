@@ -1,4 +1,5 @@
-import os, json, itertools
+import os, json
+from itertools import product
 import numpy as np
 from scipy.sparse.csgraph import minimum_spanning_tree, floyd_warshall
 from matplotlib import pyplot as plt
@@ -163,10 +164,10 @@ def get_offset_matrix(recordings, rrange, aligner):
     offsets = np.full((len(segments), len(segments)), np.nan)
     confidences = np.full((len(segments), len(segments)), np.nan)
     #go through all unequal pairs of recordings
-    for r, s in itertools.product(recordings, recordings):
+    for r, s in product(recordings, recordings):
         if r != s:
             #go through all adjacent recordings
-            for i, j in itertools.product(range(len(r)), range(len(s))):
+            for i, j in product(range(len(r)), range(len(s))):
                 if abs(i-j) <= rrange:
                     ii, jj = segments.index(r[i]), segments.index(s[j])
                     rs, confidences[ii,jj] = aligner.get_alignment_points(r[i], s[j])
@@ -185,7 +186,7 @@ def validate_offsets_histo(offsets):
     #algorithm from bano2015discovery, casanovas2015audio
     rounded = np.round(offsets)
     validated = np.zeros(offsets.shape)
-    for i, j in itertools.product(range(len(offsets)), range(len(offsets))):
+    for i, j in product(range(len(offsets)), range(len(offsets))):
         if i != j:
             histogram = {}
             for k in range(len(offsets)):
@@ -202,7 +203,7 @@ def validate_offsets_mst(offsets):
     penalty = lambda i,j,k: abs(offsets[i][j]+offsets[j][k]+offsets[k][i])
     #calculate edge consistencies
     consistencies = np.zeros(offsets.shape)
-    for i, j in itertools.product(range(len(offsets)), range(len(offsets))):
+    for i, j in product(range(len(offsets)), range(len(offsets))):
         penalties = [penalty(i,j,k) for k in range(len(offsets))]
         penalties = [p for p in penalties if not np.isnan(p)]
         if len(penalties) > 0:
