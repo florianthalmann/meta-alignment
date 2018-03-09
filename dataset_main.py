@@ -8,8 +8,17 @@ panako_matches = "ISMIR18/matches/panako.json"
 fprint_db = "ISMIR18/dbs/audfprint/"
 fprint_matches = "ISMIR18/matches/audfprint.json"
 
-panako_init.make_dbs(audiodir, panako_db)
-panako_init.find_all_matches(audiodir, panako_db, panako_matches)
+def setup_panako():
+    panako_init.make_dbs(audiodir, panako_db)
+    panako_init.find_all_matches(audiodir, panako_db, panako_matches)
 
-audfprint_init.make_dbs(audiodir, fprint_db)
-audfprint_init.find_all_matches(audiodir, fprint_db, fprint_matches)
+def setup_audfprint():
+    audfprint_init.make_dbs(audiodir, fprint_db)
+    audfprint_init.find_all_matches(audiodir, fprint_db, fprint_matches)
+
+def evaluate():
+    #TODO READ THOMAS CONFIGS ETC
+    None
+
+setup_panako()
+#setup_audfprint()
