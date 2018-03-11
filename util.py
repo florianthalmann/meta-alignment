@@ -8,9 +8,11 @@ def get_subdirs(dir, count=None):
         dirs = dirs[:count]
     return dirs
 
+def is_audiofile(file):
+    return any(file.endswith(e) for e in audio_formats)
+
 def get_audiofiles(dir):
-    is_audio = lambda f: any(f.endswith(e) for e in audio_formats)
-    return [dir+'/'+f for f in os.listdir(dir) if is_audio(f)]
+    return [dir+'/'+f for f in os.listdir(dir) if is_audiofile(f)]
 
 def get_common_path(pa, pb):
     """ returns the longest common subpath of sa and sb """
@@ -23,16 +25,13 @@ def get_common_path(pa, pb):
     result = ''.join(_iter())
     return result[:result.rfind('/')+1]
 
-def get_flac_filepaths(dir):
-    return [dir+'/'+f for f in os.listdir(dir) if f.endswith('.flac')]
-
 def get_duration(file):
     sox_out = subprocess.check_output('sox --i -D ' + file, shell=True)
     return float(sox_out.replace('\n', ''))
 
 def get_total_audio_duration(dir):
     duration = 0
-    for file in get_flac_filepaths(dir):
+    for file in get_audiofiles(dir):
         duration += get_duration(file)
     return duration
 

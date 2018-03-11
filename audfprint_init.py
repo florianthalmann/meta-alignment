@@ -30,9 +30,11 @@ def find_all_matches(audiodir, dbdir, outfile, maxdirs=None):
         #check if not already done
         if not (audiofiles[0] in matches and e in matches[audiofiles[0]]):
             print dirs.index(d)+1, "/", len(dirs), ",", dirs.index(e)+1, "/", len(dirs), "matching with audfprint"
-            dbpath = dbdir+d.replace(audiodir,'')+'_default.plkz'
+            dbpath = dbdir+e.replace(audiodir,'')+'_default.plkz'
+
             output = fp.main([None, 'match', '--dbase', dbpath,
                 '--find-time-range'] + default_config + audiofiles)
+            print d, e, output
             for i in range(len(output)):
                 if audiofiles[i] not in matches:
                     matches[audiofiles[i]] = {}

@@ -124,7 +124,7 @@ def meta_align(audiodir, outdir):
     durations = map(util.get_total_audio_duration, dirs)
     ref_index = durations.index(max(durations))
 
-    reffiles = util.get_flac_filepaths(dirs[ref_index])
+    reffiles = util.get_audiofiles(dirs[ref_index])
     reftimeline = util.get_ref_timeline(reffiles)
     dirs.pop(ref_index)
 
@@ -134,7 +134,7 @@ def meta_align(audiodir, outdir):
 
     search_deltas = [0,1,-1,2,-2]
     for dir in dirs:
-        currentfiles = util.get_flac_filepaths(dir)
+        currentfiles = util.get_audiofiles(dir)
         timeline, associations, confidence_matrix = best_match_symm(reffiles, currentfiles, search_deltas, reftimeline)
         timelines.append(timeline)
         results['associations'].append(associations)
@@ -213,6 +213,7 @@ def validate_offsets_mst(offsets):
     trans_closure = floyd_warshall(mst)
     #TODO this can be lowered to get rid of misalignments! e.g. > 200 works well
     trans_closure[trans_closure >= np.inf] = np.nan
+    #this issues a warning due to np.nan, but it works well!
     trans_closure = np.fmin(trans_closure, -1*np.transpose(trans_closure))
     return trans_closure
 
@@ -224,7 +225,7 @@ def meta_align_construct_timeline_iterative(audiodir, outdir):
 
     for i in range(2):#while len(currentfiles) > 0:
         for d in dirs:
-            current_files.append(util.get_flac_filepaths(d)[current_index])
+            current_files.append(util.get_audiofiles(d)[current_index])
         offset_matrix = get_offset_matrix(current_files)
         #set diagonal to 0!
         print np.matrix(offset_matrix)
@@ -237,7 +238,7 @@ def construct_timelines(offset_matrix, dirs, recordings):
     timelines = [[]]
     t = 0
     #take first as ref timeline
-    for f in util.get_flac_filepaths(dirs[0]):
+    for f in util.get_audiofiles(dirs[0]):
         dur = util.get_duration(f)
         timelines[0].append([t, t+dur])
         t += dur
@@ -271,7 +272,7 @@ def construct_and_plot(offset_matrix, name, dirs, recordings):
 
 def meta_align_construct_timeline(audiodir, outdir, aligner):
     dirs = filter(os.path.isdir, [audiodir+f for f in os.listdir(audiodir)])
-    recordings = [util.get_flac_filepaths(d) for d in dirs]
+    recordings = [util.get_audiofiles(d) for d in dirs]
 
     offset_matrix = get_offset_matrix(recordings, 2, aligner)
     construct_and_plot(offset_matrix, 'raw', dirs, recordings)
@@ -281,6 +282,14 @@ def meta_align_construct_timeline(audiodir, outdir, aligner):
 
     histo_matrix = validate_offsets_histo(offset_matrix)
     construct_and_plot(histo_matrix, 'histo', dirs, recordings)
+
+def get_validated_timelines(audiodir, aligner):
+    dirs = filter(os.path.isdir, [audiodir+f for f in os.listdir(audiodir)])
+    recordings = [util.get_audiofiles(d) for d in dirs]
+    offset_matrix = get_offset_matrix(recordings, 2, aligner)
+    #mst_matrix = validate_offsets_mst(offset_matrix)
+    #print offset_matrix, mst_matrix
+    return construct_timelines(offset_matrix, dirs, recordings)
 
 #tolerance in secs, for now just beginnings TODO also evaluate segment ends
 def evaluate_alignment(alignment, groundtruth, tolerance=0.5):
@@ -299,7 +308,7 @@ def evaluate_alignment(alignment, groundtruth, tolerance=0.5):
 
 def test_eval():
     dirs = filter(os.path.isdir, [audiodir+f for f in os.listdir(audiodir)])
-    recordings = [util.get_flac_filepaths(d) for d in dirs]
+    recordings = [util.get_audiofiles(d) for d in dirs]
 
     #mock groundtruth for now
     print "groundtruth"
@@ -313,4 +322,4 @@ def test_eval():
     evaluate_alignment(alignment, groundtruth)
 
 #meta_align_construct_timeline(audiodir, resultsdir, audfprint_aligner)
-test_eval()
+#test_eval()

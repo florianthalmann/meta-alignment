@@ -15,10 +15,6 @@ def init():
                         matches[x] = {}
                     matches[x][y+'/'+name] = [int(start), int(score)]
 
-def between(string, s1, s2, index=0):
-    string = string.split(s1)[index+1]
-    return string[:string.find(s2)]
-
 def get_alignment_points(file, reffile):
     if file in matches:
         if reffile in matches[file]:
