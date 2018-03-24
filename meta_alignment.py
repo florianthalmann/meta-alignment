@@ -257,6 +257,8 @@ def construct_timelines(offset_matrix, dirs, recordings):
                 ref = timelines[0][ref_index]
                 offset = ref[0]+offsets[ref_index]
                 timeline.append([offset, offset+util.get_duration(f)])
+            else:
+                timeline.append(None)
         timelines.append(timeline)
     return timelines
 
@@ -291,20 +293,43 @@ def get_validated_timelines(audiodir, aligner):
     #print offset_matrix, mst_matrix
     return construct_timelines(offset_matrix, dirs, recordings)
 
-#tolerance in secs, for now just beginnings TODO also evaluate segment ends
-def evaluate_alignment(alignment, groundtruth, tolerance=0.5):
-    correct = 0.0
-    aligned = float(sum([len(rec) for rec in alignment]))
-    total = float(sum([len(rec) for rec in groundtruth]))
-    total_deviation = 0
+def get_deviations(alignment, groundtruth):
+    deviations = []
     for a, g in zip(alignment, groundtruth):
         for s1, s2 in zip(a, g):
-            deviation = abs(s1[0]-s2[0])
-            if deviation < tolerance:
-                correct += 1
-            total_deviation += deviation
+            if s1 and s2:
+                deviations.append(abs(s1[0]-s2[0]))
+            else:
+                deviations.append(None)
+    return deviations
+
+#returns the total deviation for each element of the given alignment list
+def get_deviation_sums(alignment, groundtruth):
+    deviations = []
+    for a, g in zip(alignment, groundtruth):
+        dev = 0
+        for s1, s2 in zip(a, g):
+            if s1 and s2:
+                dev += abs(s1[0]-s2[0])
+        deviations.append(dev)
+    return deviations
+
+#tolerance in secs, for now just beginnings TODO also evaluate segment ends
+#TODO ALSO EVAL MISSING SEGMENTS (PENALTY?)
+def evaluate_alignment(alignment, groundtruth, tolerance=0.5):
+    aligned = float(sum([len(rec) for rec in alignment]))
+    total = float(sum([len(rec) for rec in groundtruth]))
+    deviations = get_deviations(alignment, groundtruth, tolerance)
+    total_deviation = sum(deviations)
+    correct = sum(1 for d in deviations if d < tolerance)
     print "aligned:", aligned / total, "correct:", correct / total, "deviation:",  total_deviation
     return aligned / total, correct / total, total_deviation
+
+def plot_evaluation_graph(alignment, groundtruth, outfile):
+    deviations = get_deviation_sums(alignment, groundtruth)
+    plt.plot(deviations)
+    plt.savefig(outfile, facecolor='white', edgecolor='none')
+
 
 def test_eval():
     dirs = filter(os.path.isdir, [audiodir+f for f in os.listdir(audiodir)])

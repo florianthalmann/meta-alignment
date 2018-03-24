@@ -3,7 +3,7 @@ import panako_init, audfprint_init, util
 from audfprint_aligner import AudfprintAligner
 from panako_aligner import PanakoAligner
 from match_aligner import MatchAligner
-from meta_alignment import get_validated_timelines, evaluate_alignment
+from meta_alignment import get_validated_timelines, evaluate_alignment, plot_evaluation_graph
 
 audiodir = "ISMIR18/dataset/data/gd1982-10-10.sbd.fixed.miller.110784.flac16/"
 
@@ -14,6 +14,8 @@ fprint_db = "ISMIR18/dbs/audfprint/"
 fprint_matches = "ISMIR18/matches/audfprint.json"
 
 match_dir = "ISMIR18/dbs/match/"
+
+results = "ISMIR18/results/"
 
 def setup_panako():
     panako_init.make_dbs(audiodir, panako_db)
@@ -33,12 +35,14 @@ def construct_groundtruth():
     return [load_times(d+"/args.log") for d in util.get_subdirs(audiodir)]
 
 def evaluate():
-    #aligner = AudfprintAligner(fprint_matches)
-    aligner = MatchAligner(match_dir)
+    aligner = AudfprintAligner(fprint_matches)
+    #aligner = MatchAligner(match_dir)
+    #aligner = PanakoAligner(panako_matches)
     alignment = get_validated_timelines(audiodir, aligner)
     groundtruth = construct_groundtruth()
     #print alignment, groundtruth
-    evaluate_alignment(alignment, groundtruth)
+    #evaluate_alignment(alignment, groundtruth)
+    plot_evaluation_graph(alignment, groundtruth, results+"fprint.pdf")
 
 #setup_panako()
 #setup_audfprint()
