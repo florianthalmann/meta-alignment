@@ -1,6 +1,7 @@
 import os, json
 from itertools import product
 import numpy as np
+from scipy import stats
 from scipy.sparse.csgraph import minimum_spanning_tree, floyd_warshall
 from matplotlib import pyplot as plt
 import matplotlib.patches as patches
@@ -327,9 +328,18 @@ def evaluate_alignment(alignment, groundtruth, tolerance=0.5):
 
 def plot_evaluation_graph(alignment, groundtruth, outfile):
     deviations = get_deviation_sums(alignment, groundtruth)
+    fig = plt.figure()
     plt.plot(deviations)
     plt.savefig(outfile, facecolor='white', edgecolor='none')
 
+def plot_linreg(alignment, groundtruth, outfile):
+    deviations = get_deviation_sums(alignment, groundtruth)
+    x = np.array(range(len(deviations)))
+    slope, intercept, r_value, p_value, std_err = stats.linregress(x, deviations)
+    fig = plt.figure()
+    plt.plot(deviations, 'o')
+    plt.plot(x, intercept + slope*x, 'r', label='fitted line')
+    plt.savefig(outfile, facecolor='white', edgecolor='none')
 
 def test_eval():
     dirs = util.get_subdirs(audiodir)
