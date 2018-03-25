@@ -1,5 +1,4 @@
-import os, subprocess
-from natsort import natsorted
+import os, subprocess, re
 
 audio_formats = ['.flac', '.mp3', '.shn', '.wav']
 
@@ -8,6 +7,10 @@ def get_subdirs(dir, count=None):
     if count is not None:
         dirs = dirs[:count]
     return dirs
+
+def natsorted(l):
+    sortkey = lambda s: [int(t) if t.isdigit() else t.lower() for t in re.split('(\d+)', s)]
+    return sorted(l, key = sortkey)
 
 def is_audiofile(file):
     return any(file.endswith(e) for e in audio_formats)
