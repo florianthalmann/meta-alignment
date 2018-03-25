@@ -22,23 +22,25 @@ match_dir = "ISMIR18/dbs/match/"
 
 results = "ISMIR18/results/"
 
+numdirs = 10
+
 def setup_panako():
     logging.info('panako setup started')
-    panako_init.make_dbs(audiodir, panako_db)
+    panako_init.make_dbs(audiodir, panako_db, numdirs)
     logging.info('panako dbs done')
-    panako_init.find_all_matches(audiodir, panako_db, panako_matches, 20)
+    panako_init.find_all_matches(audiodir, panako_db, panako_matches, numdirs)
     logging.info('panako matches done')
 
 def setup_audfprint():
     logging.info('audfprint setup started')
-    audfprint_init.make_dbs(audiodir, fprint_db)
+    audfprint_init.make_dbs(audiodir, fprint_db, numdirs)
     logging.info('audfprint dbs done')
-    audfprint_init.find_all_matches(audiodir, fprint_db, fprint_matches, 20)
+    audfprint_init.find_all_matches(audiodir, fprint_db, fprint_matches, numdirs)
     logging.info('audfprint matches done')
 
 def setup_match():
     logging.info('match setup started')
-    alignment = get_validated_timelines(audiodir, MatchAligner(match_dir), 20)
+    alignment = get_validated_timelines(audiodir, MatchAligner(match_dir), numdirs)
     logging.info('match matches done')
 
 def load_times(file):
