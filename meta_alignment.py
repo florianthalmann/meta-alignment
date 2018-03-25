@@ -120,7 +120,7 @@ def best_match_symm(reffiles, otherfiles, search_deltas, reftimeline):
     return timeline, associations, confidence_matrix
 
 def meta_align(audiodir, outdir):
-    dirs = filter(os.path.isdir, [audiodir+f for f in os.listdir(audiodir)])
+    dirs = util.get_subdirs(audiodir)
     durations = map(util.get_total_audio_duration, dirs)
     ref_index = durations.index(max(durations))
 
@@ -218,7 +218,7 @@ def validate_offsets_mst(offsets):
     return trans_closure
 
 def meta_align_construct_timeline_iterative(audiodir, outdir):
-    dirs = filter(os.path.isdir, [audiodir+f for f in os.listdir(audiodir)])
+    dirs = util.get_subdirs(audiodir)
 
     current_index = 0
     current_files = []
@@ -273,7 +273,7 @@ def construct_and_plot(offset_matrix, name, dirs, recordings):
     return timelines
 
 def meta_align_construct_timeline(audiodir, outdir, aligner):
-    dirs = filter(os.path.isdir, [audiodir+f for f in os.listdir(audiodir)])
+    dirs = util.get_subdirs(audiodir)
     recordings = [util.get_audiofiles(d) for d in dirs]
 
     offset_matrix = get_offset_matrix(recordings, 2, aligner)
@@ -285,8 +285,8 @@ def meta_align_construct_timeline(audiodir, outdir, aligner):
     histo_matrix = validate_offsets_histo(offset_matrix)
     construct_and_plot(histo_matrix, 'histo', dirs, recordings)
 
-def get_validated_timelines(audiodir, aligner):
-    dirs = filter(os.path.isdir, [audiodir+f for f in os.listdir(audiodir)])
+def get_validated_timelines(audiodir, aligner, maxdirs=None):
+    dirs = util.get_subdirs(audiodir, maxdirs)
     recordings = [util.get_audiofiles(d) for d in dirs]
     offset_matrix = get_offset_matrix(recordings, 2, aligner)
     #mst_matrix = validate_offsets_mst(offset_matrix)
@@ -332,7 +332,7 @@ def plot_evaluation_graph(alignment, groundtruth, outfile):
 
 
 def test_eval():
-    dirs = filter(os.path.isdir, [audiodir+f for f in os.listdir(audiodir)])
+    dirs = util.get_subdirs(audiodir)
     recordings = [util.get_audiofiles(d) for d in dirs]
 
     #mock groundtruth for now
