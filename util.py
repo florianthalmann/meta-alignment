@@ -1,4 +1,5 @@
 import os, subprocess
+from natsort import natsorted
 
 audio_formats = ['.flac', '.mp3', '.shn', '.wav']
 
@@ -12,7 +13,7 @@ def is_audiofile(file):
     return any(file.endswith(e) for e in audio_formats)
 
 def get_audiofiles(dir):
-    return [dir+'/'+f for f in os.listdir(dir) if is_audiofile(f)]
+    return natsorted([dir+'/'+f for f in os.listdir(dir) if is_audiofile(f)])
 
 def get_common_path(pa, pb):
     """ returns the longest common subpath of sa and sb """
