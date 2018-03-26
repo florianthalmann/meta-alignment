@@ -24,6 +24,8 @@ results = "ISMIR18/results/"
 
 numdirs = 10
 
+params = ["crowd", "speed", "deviation", "gaps", "quantity"]
+
 def setup_panako():
     logging.info('panako setup started')
     panako_init.make_dbs(audiodir, panako_db, numdirs)
@@ -49,27 +51,30 @@ def load_value(file, key):
         return json.loads(value.replace(key+" = ", ""))
 
 def load_param(key):
-    return [load_value(d+"/args.log", key) for d in util.get_subdirs(audiodir)]
+    return [load_value(d+"/args.log", key) for d in util.get_subdirs(audiodir, numdirs)]
 
-def evaluate(aligner, param_name, outfile):
-    param = load_param(param_name)
+def evaluate(aligner, outfile):
     alignment = get_validated_timelines(audiodir, aligner)
     groundtruth = load_param("reference_times")
-    #sort by param value
-    combined = zip(param, alignment, groundtruth)
-    combined.sort(key = lambda l: l[0])
-    param, alignment, groundtruth = zip(*combined)
-    #evaluate_alignment(alignment, groundtruth)
-    plot_linreg(alignment, groundtruth, results+outfile+"_"+param_name+".pdf")
-
-def evaluate_params(aligner, outfile):
-    for p in ["crowd", "speed", "deviation"]:
-        evaluate(aligner, p, outfile)
+    logging.info(evaluate_alignment(alignment, groundtruth))
+    for p in params:
+        param = load_param(p)
+        #sort by param value
+        combined = zip(param, alignment, groundtruth)
+        combined.sort(key = lambda l: l[0])
+        _, sorted_align, sorted_ground = zip(*combined)
+        plot_linreg(sorted_align, sorted_ground, results+outfile+"_"+p+".pdf")
 
 def evaluate_all():
-    #evaluate_params(AudfprintAligner(fprint_matches), "fprint")
-    evaluate_params(PanakoAligner(panako_matches), "panako")
-    #evaluate_params(MatchAligner(match_dir), "match")
+    # logging.info('audfprint evaluation started')
+    evaluate(AudfprintAligner(fprint_matches), "fprint")
+    # logging.info('audfprint evaluation done')
+    # logging.info('panako evaluation started')
+    # evaluate(PanakoAligner(panako_matches), "panako")
+    # logging.info('panako evaluation done')
+    # logging.info('match evaluation started')
+    # evaluate(MatchAligner(match_dir), "match")
+    # logging.info('match evaluation done')
 
 
 #setup_panako()

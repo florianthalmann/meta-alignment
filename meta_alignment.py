@@ -320,8 +320,8 @@ def get_deviation_sums(alignment, groundtruth):
 def evaluate_alignment(alignment, groundtruth, tolerance=0.5):
     aligned = float(sum([len(rec) for rec in alignment]))
     total = float(sum([len(rec) for rec in groundtruth]))
-    deviations = get_deviations(alignment, groundtruth, tolerance)
-    total_deviation = sum(deviations)
+    deviations = get_deviations(alignment, groundtruth)
+    total_deviation = sum([d for d in deviations if d]) #ignore None
     correct = sum(1 for d in deviations if d < tolerance)
     print "aligned:", aligned / total, "correct:", correct / total, "deviation:",  total_deviation
     return aligned / total, correct / total, total_deviation
