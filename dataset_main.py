@@ -66,15 +66,15 @@ def evaluate(aligner, outfile):
         plot_linreg(sorted_align, sorted_ground, results+outfile+"_"+p+".pdf")
 
 def evaluate_all():
-    # logging.info('audfprint evaluation started')
+    logging.info('audfprint evaluation started')
     evaluate(AudfprintAligner(fprint_matches), "fprint")
-    # logging.info('audfprint evaluation done')
-    # logging.info('panako evaluation started')
-    # evaluate(PanakoAligner(panako_matches), "panako")
-    # logging.info('panako evaluation done')
-    # logging.info('match evaluation started')
-    # evaluate(MatchAligner(match_dir), "match")
-    # logging.info('match evaluation done')
+    logging.info('audfprint evaluation done')
+    logging.info('panako evaluation started')
+    evaluate(PanakoAligner(panako_matches), "panako")
+    logging.info('panako evaluation done')
+    logging.info('match evaluation started')
+    evaluate(MatchAligner(match_dir), "match")
+    logging.info('match evaluation done')
 
 
 #setup_panako()
