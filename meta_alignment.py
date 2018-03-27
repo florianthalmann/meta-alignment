@@ -332,12 +332,14 @@ def plot_evaluation_graph(alignment, groundtruth, outfile):
     plt.plot(deviations)
     plt.savefig(outfile, facecolor='white', edgecolor='none')
 
-def plot_linreg(alignment, groundtruth, outfile):
+def plot_linreg(param_name, param_values, alignment, groundtruth, outfile):
+    x = np.array(param_values)
     deviations = get_deviation_sums(alignment, groundtruth)
-    x = np.array(range(len(deviations)))
     slope, intercept, r_value, p_value, std_err = stats.linregress(x, deviations)
     fig = plt.figure()
-    plt.plot(deviations, 'o')
+    plt.xlabel(param_name)
+    plt.ylabel('total deviation')
+    plt.plot(x, deviations, 'o')
     plt.plot(x, intercept + slope*x, 'r', label='fitted line')
     plt.savefig(outfile, facecolor='white', edgecolor='none')
 

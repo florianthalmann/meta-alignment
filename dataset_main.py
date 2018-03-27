@@ -62,8 +62,8 @@ def evaluate(aligner, outfile):
         #sort by param value
         combined = zip(param, alignment, groundtruth)
         combined.sort(key = lambda l: l[0])
-        _, sorted_align, sorted_ground = zip(*combined)
-        plot_linreg(sorted_align, sorted_ground, results+outfile+"_"+p+".pdf")
+        param, sorted_align, sorted_ground = zip(*combined)
+        plot_linreg(p, param, sorted_align, sorted_ground, results+outfile+"_"+p+".pdf")
 
 def evaluate_all():
     logging.info('audfprint evaluation started')
