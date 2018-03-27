@@ -22,7 +22,7 @@ match_dir = "ISMIR18/dbs/match/"
 
 results = "ISMIR18/results/"
 
-numdirs = 10
+numdirs = 13
 
 params = ["crowd", "speed", "deviation", "gaps", "quantity"]
 
@@ -54,7 +54,7 @@ def load_param(key):
     return [load_value(d+"/args.log", key) for d in util.get_subdirs(audiodir, numdirs)]
 
 def evaluate(aligner, outfile):
-    alignment = get_validated_timelines(audiodir, aligner)
+    alignment = get_validated_timelines(audiodir, aligner, numdirs)
     groundtruth = load_param("reference_times")
     logging.info(evaluate_alignment(alignment, groundtruth))
     for p in params:
@@ -77,8 +77,8 @@ def evaluate_all():
     logging.info('match evaluation done')
 
 
-#setup_panako()
-#setup_audfprint()
-#setup_match()
+setup_panako()
+setup_audfprint()
+setup_match()
 
 evaluate_all()
