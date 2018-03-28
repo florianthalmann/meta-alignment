@@ -286,12 +286,12 @@ def meta_align_construct_timeline(audiodir, outdir, aligner):
     histo_matrix = validate_offsets_histo(offset_matrix)
     construct_and_plot(histo_matrix, 'histo', dirs, recordings)
 
-def get_validated_timelines(audiodir, aligner, maxdirs=None):
+def get_timelines(audiodir, aligner, maxdirs=None, validated=False):
     dirs = util.get_subdirs(audiodir, maxdirs)
     recordings = [util.get_audiofiles(d) for d in dirs]
     offset_matrix = get_offset_matrix(recordings, 2, aligner)
-    #mst_matrix = validate_offsets_mst(offset_matrix)
-    #print offset_matrix, mst_matrix
+    if validated:
+        offset_matrix = validate_offsets_mst(offset_matrix)
     return construct_timelines(offset_matrix, dirs, recordings)
 
 def get_deviations(alignment, groundtruth):

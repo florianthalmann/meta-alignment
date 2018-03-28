@@ -3,7 +3,7 @@ import panako_init, audfprint_init, util
 from audfprint_aligner import AudfprintAligner
 from panako_aligner import PanakoAligner
 from match_aligner import MatchAligner
-from meta_alignment import get_validated_timelines, evaluate_alignment, plot_evaluation_graph, plot_linreg
+from meta_alignment import get_timelines, evaluate_alignment, plot_evaluation_graph, plot_linreg
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(levelname)s %(message)s',
@@ -22,7 +22,7 @@ match_dir = "ISMIR18/dbs/match/"
 
 results = "ISMIR18/results/"
 
-numdirs = 13
+numdirs = 15
 
 params = ["crowd", "speed", "deviation", "gaps", "quantity"]
 
@@ -42,7 +42,7 @@ def setup_audfprint():
 
 def setup_match():
     logging.info('match setup started')
-    alignment = get_validated_timelines(audiodir, MatchAligner(match_dir), numdirs)
+    alignment = get_timelines(audiodir, MatchAligner(match_dir), numdirs)
     logging.info('match matches done')
 
 def load_value(file, key):
@@ -53,8 +53,8 @@ def load_value(file, key):
 def load_param(key):
     return [load_value(d+"/args.log", key) for d in util.get_subdirs(audiodir, numdirs)]
 
-def evaluate(aligner, outfile):
-    alignment = get_validated_timelines(audiodir, aligner, numdirs)
+def evaluate(aligner, outfile, validated):
+    alignment = get_timelines(audiodir, aligner, numdirs, validated)
     groundtruth = load_param("reference_times")
     logging.info(evaluate_alignment(alignment, groundtruth))
     for p in params:
@@ -63,22 +63,23 @@ def evaluate(aligner, outfile):
         combined = zip(param, alignment, groundtruth)
         combined.sort(key = lambda l: l[0])
         param, sorted_align, sorted_ground = zip(*combined)
-        plot_linreg(p, param, sorted_align, sorted_ground, results+outfile+"_"+p+".pdf")
+        plot_linreg(p, param, sorted_align, sorted_ground, results+outfile+"_"+p+"_"+str(validated)+".pdf")
 
-def evaluate_all():
+def evaluate_all(validated):
     logging.info('audfprint evaluation started')
-    evaluate(AudfprintAligner(fprint_matches), "fprint")
+    evaluate(AudfprintAligner(fprint_matches), "fprint", validated)
     logging.info('audfprint evaluation done')
     logging.info('panako evaluation started')
-    evaluate(PanakoAligner(panako_matches), "panako")
+    evaluate(PanakoAligner(panako_matches), "panako", validated)
     logging.info('panako evaluation done')
     logging.info('match evaluation started')
-    evaluate(MatchAligner(match_dir), "match")
+    evaluate(MatchAligner(match_dir), "match", validated)
     logging.info('match evaluation done')
 
 
-setup_panako()
-setup_audfprint()
-setup_match()
+#setup_panako()
+#setup_audfprint()
+#setup_match()
 
-evaluate_all()
+evaluate_all(False)
+evaluate_all(True)
