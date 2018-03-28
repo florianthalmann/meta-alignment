@@ -318,11 +318,11 @@ def get_deviation_sums(alignment, groundtruth):
 #tolerance in secs, for now just beginnings TODO also evaluate segment ends
 #TODO ALSO EVAL MISSING SEGMENTS (PENALTY?)
 def evaluate_alignment(alignment, groundtruth, tolerance=0.5):
-    aligned = float(sum([len(rec) for rec in alignment]))
     total = float(sum([len(rec) for rec in groundtruth]))
+    aligned = sum(1 for rec in alignment for seg in rec if seg)
     deviations = get_deviations(alignment, groundtruth)
     total_deviation = sum([d for d in deviations if d]) #ignore None
-    correct = sum(1 for d in deviations if d < tolerance)
+    correct = sum(1 for d in deviations if d and d < tolerance)
     print "aligned:", aligned / total, "correct:", correct / total, "deviation:",  total_deviation
     return aligned / total, correct / total, total_deviation
 
