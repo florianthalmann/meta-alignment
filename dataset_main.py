@@ -1,5 +1,5 @@
 import json, logging
-import panako_init, audfprint_init, util
+import panako_init, audfprint_init, match_init, util
 from audfprint_aligner import AudfprintAligner
 from panako_aligner import PanakoAligner
 from match_aligner import MatchAligner
@@ -19,6 +19,7 @@ fprint_db = "ISMIR18/dbs/audfprint/"
 fprint_matches = "ISMIR18/matches/audfprint.json"
 
 match_dir = "ISMIR18/dbs/match/"
+match_matches = "ISMIR18/matches/match.json"
 
 results = "ISMIR18/results/"
 
@@ -42,7 +43,7 @@ def setup_audfprint():
 
 def setup_match():
     logging.info('match setup started')
-    alignment = get_timelines(audiodir, MatchAligner(match_dir), numdirs)
+    match_init.find_all_matches(audiodir, match_dir, match_matches, numdirs)
     logging.info('match matches done')
 
 def load_value(file, key):
@@ -73,13 +74,13 @@ def evaluate_all(validated):
     evaluate(PanakoAligner(panako_matches), "panako", validated)
     logging.info('panako evaluation done')
     logging.info('match evaluation started')
-    evaluate(MatchAligner(match_dir), "match", validated)
+    evaluate(MatchAligner(match_matches), "match", validated)
     logging.info('match evaluation done')
 
 
-#setup_panako()
-#setup_audfprint()
-#setup_match()
+setup_panako()
+setup_audfprint()
+setup_match()
 
 evaluate_all(False)
-evaluate_all(True)
+#evaluate_all(True)

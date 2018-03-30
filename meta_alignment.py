@@ -61,7 +61,7 @@ def fast_match(reffiles, otherfiles, search_deltas, reftimeline, keep_bias=False
                 j = i+d
             if 0 <= j and j < len(reffiles):
                 print i, j, d
-                points, rsquared = aligner.get_alignment_points(otherfiles[i], reffiles[j])
+                points, rsquared = aligner.calculate_alignment(otherfiles[i], reffiles[j])
                 if rsquared > 0.99:
                     timeline.append([points[0]+reftimeline[j][0], points[1]+reftimeline[j][1]])
                     associations.append([i,j])
@@ -81,7 +81,7 @@ def best_match(reffiles, otherfiles, search_deltas, reftimeline):
             j = i+d
             if 0 <= j and j < len(reffiles):
                 print i, j, d
-                points, rsquared = aligner.get_alignment_points(otherfiles[i], reffiles[j])
+                points, rsquared = aligner.calculate_alignment(otherfiles[i], reffiles[j])
                 results.append([rsquared, points, j])
                 confidence_matrix[i][j] = rsquared
         results.sort()
@@ -101,8 +101,8 @@ def best_match_symm(reffiles, otherfiles, search_deltas, reftimeline):
             j = i+d
             if 0 <= j and j < len(reffiles):
                 print i, j, d
-                points, rsquared = aligner.get_alignment_points(otherfiles[i], reffiles[j])
-                points2, rsquared2 = aligner.get_alignment_points(reffiles[j], otherfiles[i])
+                points, rsquared = aligner.calculate_alignment(otherfiles[i], reffiles[j])
+                points2, rsquared2 = aligner.calculate_alignment(reffiles[j], otherfiles[i])
                 rating = rsquared*rsquared2
                 results.append([rating, rsquared, points, rsquared2, points2, j])
                 confidence_matrix[i][j] = rating
