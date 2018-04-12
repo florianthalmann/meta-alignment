@@ -10,20 +10,20 @@ logging.basicConfig(level=logging.INFO,
                     filename='dataset_main.log',
                     filemode='a')
 
-audiodir = "ISMIR18/dataset/data4/gd1982-10-10.sbd.fixed.miller.110784.flac16/"
+audiodir = "ISMIR18/dataset/data5/gd1982-10-10.sbd.fixed.miller.110784.flac16/"
 
-panako_db = "ISMIR18/dbs/panako/"
-panako_matches = "ISMIR18/matches/panako.json"
+panako_db = "ISMIR18/dbs/data5/panako/"
+panako_matches = "ISMIR18/matches/data5/panako.json"
 
-fprint_db = "ISMIR18/dbs/audfprint/"
-fprint_matches = "ISMIR18/matches/audfprint.json"
+fprint_db = "ISMIR18/dbs/data5/audfprint/"
+fprint_matches = "ISMIR18/matches/data5/audfprint.json"
 
-match_dir = "ISMIR18/dbs/match/"
-match_matches = "ISMIR18/matches/match.json"
+match_dir = "ISMIR18/dbs/data5/match/"
+match_matches = "ISMIR18/matches/data5/match.json"
 
-results = "ISMIR18/results/"
+results = "ISMIR18/results/data5/"
 
-numdirs = 15
+numdirs = 3
 
 params = ["crowd", "speed", "deviation", "gaps", "quantity"]
 
