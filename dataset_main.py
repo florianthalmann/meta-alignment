@@ -23,9 +23,12 @@ match_matches = "ISMIR18/matches/data5/match.json"
 
 results = "ISMIR18/results/data5/"
 
-numdirs = 3
-
 params = ["crowd", "speed", "deviation", "gaps", "quantity"]
+
+numdirs = 10
+
+#main info: adjust every time the script is run
+logging.info('WORKING ON DATA5, NUMDIRS AT 10')
 
 def setup_panako():
     logging.info('panako setup started')
