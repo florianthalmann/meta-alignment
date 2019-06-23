@@ -85,7 +85,7 @@ def _sourceAudio(e, args):
     concat = None
     track_markers = None
     for i, f in enumerate(e):
-        #fixMp3Header(f[0])
+        fixMp3Header(f[0])
         sdir = '/'.join(f[0].split('/')[:-2])
         fname = f[0].replace('/original/', '/')[:-3] + 'wav'
         flength = f[1]
@@ -101,23 +101,23 @@ def _sourceAudio(e, args):
         end_beat = findNearest(fbeats, start_beat + TRIM)
         if i == 0:
             addstart = audio[int((start_beat - ADD) * SR):int(start_beat * SR)]
-            for pos in range(FADE): addstart[pos] *= np.square(np.sin(pos * 0.5 * np.pi/FADE))
+            addstart = fadeIn(addstart)
             sf.write(os.path.join(sdir, 'addstart.wav'), addstart, SR)
             concat = audio[int(start_beat * SR):int(end_beat * SR)]
-            for pos in range(FADE): concat[pos+len(concat)-FADE] *= np.square(np.cos(pos * 0.5 * np.pi/FADE)) 
+            concat = fadeOut(concat)
             track_markers = [0, (len(concat) - 0.5 * FADE) / SR]
             q.put(1)
             continue
         elif i == 9:
             addend = audio[int(end_beat * SR):int((end_beat + ADD) * SR)]
-            for pos in range(FADE): addend[pos+len(addend)-FADE] *= np.square(np.cos(pos * 0.5 * np.pi/FADE)) 
+            addend = fadeOut(addend)
             sf.write(os.path.join(sdir, 'addend.wav'), addend, SR)
             snipaudio = audio[int(start_beat * SR):int(end_beat * SR)]
-            for pos in range(FADE): snipaudio[pos] *= np.square(np.sin(pos * 0.5 * np.pi/FADE))
+            snipaudio = fadeIn(snipaudio)
         else:
             snipaudio = audio[int(start_beat * SR):int(end_beat * SR)]
-            for pos in range(FADE): snipaudio[pos] *= np.square(np.sin(pos * 0.5 * np.pi/FADE))
-            for pos in range(FADE): snipaudio[pos+len(snipaudio)-FADE] *= np.square(np.cos(pos * 0.5 * np.pi/FADE)) 
+            snipaudio = fadeIn(snipaudio)
+            snipaudio = fadeOut(snipaudio)
         for pos in range(FADE):
             concat_pos = pos + len(concat) - FADE
             concat[concat_pos] += snipaudio[pos]
@@ -126,6 +126,16 @@ def _sourceAudio(e, args):
         q.put(1)
     sf.write(os.path.join(sdir, 'concat.wav'), concat, SR)
     return (sdir.split('/')[1], len(concat) / SR, track_markers[:-1])
+
+
+def fadeIn(a):
+    for pos in range(FADE): a[pos] *= np.square(np.sin(pos * 0.5 * np.pi/FADE))
+    return a
+
+
+def fadeOut(a):
+    for pos in range(FADE): a[pos+len(a)-FADE] *= np.square(np.cos(pos * 0.5 * np.pi/FADE))
+    return a
 
 
 def findNearest(a, v):
