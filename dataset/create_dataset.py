@@ -6,6 +6,8 @@ from progressbar import ProgressBar
 import multiprocessing as mp
 from itertools import repeat
 from uuid import uuid4
+import soundfile as sf
+import numpy as np
 
 
 REFS = ['gd1982-10-10.sbd.fixed.miller.110784.flac16', 'gd1995-03-18.sbd.miller.97659.flac16']
@@ -16,17 +18,18 @@ manager = mp.Manager()
 count = manager.Value('i', 0)
 bar = None
 
-CROSSFADE = 0.1
-TRIM = 60           # tracks 1 and 10 must be > ADD * 2 (ADD reserved for adding to start/end)
+SR = 44100
+FADE = int(0.1 * SR)
+TRIM = 60          # tracks 1 and 10 must be >= TRIM+ADD, tracks 2-9 >= TRIM
 ADD = 10
 DATASETSIZE = 10
 
 
 class Parameters(object):
     def __init__(self, ref):
-        self.ref_dir = os.path.join('source', ref[0])
+        self.etree = ref[0]
         self.ref_length = ref[1]
-        self.ref_trackmarkers = sorted(ref[2])
+        self.ref_trackmarkers = ref[2]
         self.dir = os.path.join('data', ref[0], str(uuid4()).replace('-', ''))
         # generate random parameters
         self.speed = choice([1] + 2 * [randint(90, 110) * 0.01])
@@ -45,16 +48,11 @@ class Parameters(object):
         pass
 
 
-
-
 def refFiles():
     ref_files = []
     for e in REFS:
         sdir = os.path.join('source', e)
-        [os.remove(os.path.join(sdir, f)) for f in os.listdir(sdir) if f.endswith('_snippet.wav')]
-        if os.path.isfile(os.path.join(sdir, 'concatenated.wav')): os.remove(os.path.join(sdir, 'concatenated.wav'))
-        if os.path.isfile(os.path.join(sdir, 'add_start.wav')): os.remove(os.path.join(sdir, 'add_start.wav'))
-        if os.path.isfile(os.path.join(sdir, 'add_end.wav')): os.remove(os.path.join(sdir, 'add_end.wav'))
+        [os.remove(os.path.join(sdir, f)) for f in os.listdir(sdir) if f.endswith('.wav')]
         if os.path.exists('data'): shutil.rmtree('data') 
         os.mkdir('data')
         p = os.path.join(sdir, 'original')
@@ -62,50 +60,74 @@ def refFiles():
     return ref_files
 
 
-def beatPostions(f):
-    audio = MonoLoader(filename=f[1])()
-    beat_tracker = BeatTrackerMultiFeature()
-    beats, confidence = beat_tracker(audio)
-    return { 'file':f[1], 'length':len(audio)/44100, 'beats':list(beats)[::4], 'track':f[0] }
 
-
-def makeSnippet(f):
-    if f['track'] in (1, 10) and f['length'] < ADD * 2:
-        print('ERROR: track {0} shorter than {1}s', format(f['track'], ADD * 2))
-        sys.exit()
-    fbeats = f['beats']
-    if f['track'] == 1: fbeats = [b for b in fbeats if b > ADD]
-    elif f['track'] == 10: fbeats = [b for b in fbeats if b < f['length'] - ADD]
-    snipfile = f['file'].replace('/original/', '/')[:-4] + '_snippet.wav'
-    if f['length'] <= TRIM:
-        tfm = sox.Transformer()
-        tfm.build(f['file'], snipfile)
-        return
-    random_start = choice([b for b in fbeats if b < f['length'] - TRIM])
-    random_choice = [f['length'] - TRIM] + 2 * [random_start]
-    start_beat = choice(random_choice)
-    end_beat = findNearest(fbeats, start_beat + TRIM)
+def mp3toWav(mp3, wav):
     tfm = sox.Transformer()
-    tfm.trim(start_beat, end_beat)
-    tfm.build(f['file'], snipfile)
-    if f['track'] == 1:
-        end_beat = start_beat
-        start_beat = findNearest(fbeats, start_beat - ADD)
-        sfile = 'add_start.wav'
-    elif f['track'] == 10:
-        start_beat = end_beat
-        end_beat = findNearest(fbeats, end_beat + ADD)
-        sfile = 'add_end.wav'
-    if f['track'] in (1, 10):
-        snipfile = os.path.join('/'.join(f['file'].split('/')[:-2]), sfile)
-        print(snipfile)
-        tfm = sox.Transformer()
-        tfm.trim(start_beat, end_beat)
-        tfm.build(f['file'], snipfile)
+    tfm.build(mp3, wav)
 
 
+def inputAudio(es):
+    b = mpStart(beatPositions, es)
+    edict = {}
+    for f in sorted(b):
+        if f[0] not in edict: edict[f[0]] = []
+        edict[f[0]].append(f[2:])
+    elist = []
+    [elist.append(edict[e]) for e in edict]
+    return elist
 
-  
+
+def sourceAudio(args):
+    return _sourceAudio(*args)
+
+def _sourceAudio(e, args):
+    q = args[-1]
+    concat = None
+    track_markers = None
+    for i, f in enumerate(e):
+        #fixMp3Header(f[0])
+        sdir = '/'.join(f[0].split('/')[:-2])
+        fname = f[0].replace('/original/', '/')[:-3] + 'wav'
+        flength = f[1]
+        fbeats = f[2]
+        mp3toWav(f[0], fname)
+        audio, sr = sf.read(fname)
+        os.remove(fname)
+        if i == 0: fbeats = [b for b in fbeats if b > ADD]
+        elif i == 9: fbeats = [b for b in fbeats if b < flength - ADD]
+        random_start = choice([b for b in fbeats if b < flength - TRIM])
+        random_choice = [flength - TRIM] + 2 * [random_start]
+        start_beat = choice(random_choice)
+        end_beat = findNearest(fbeats, start_beat + TRIM)
+        if i == 0:
+            addstart = audio[int((start_beat - ADD) * SR):int(start_beat * SR)]
+            for pos in range(FADE): addstart[pos] *= np.square(np.sin(pos * 0.5 * np.pi/FADE))
+            sf.write(os.path.join(sdir, 'addstart.wav'), addstart, SR)
+            concat = audio[int(start_beat * SR):int(end_beat * SR)]
+            for pos in range(FADE): concat[pos+len(concat)-FADE] *= np.square(np.cos(pos * 0.5 * np.pi/FADE)) 
+            track_markers = [0, (len(concat) - 0.5 * FADE) / SR]
+            q.put(1)
+            continue
+        elif i == 9:
+            addend = audio[int(end_beat * SR):int((end_beat + ADD) * SR)]
+            for pos in range(FADE): addend[pos+len(addend)-FADE] *= np.square(np.cos(pos * 0.5 * np.pi/FADE)) 
+            sf.write(os.path.join(sdir, 'addend.wav'), addend, SR)
+            snipaudio = audio[int(start_beat * SR):int(end_beat * SR)]
+            for pos in range(FADE): snipaudio[pos] *= np.square(np.sin(pos * 0.5 * np.pi/FADE))
+        else:
+            snipaudio = audio[int(start_beat * SR):int(end_beat * SR)]
+            for pos in range(FADE): snipaudio[pos] *= np.square(np.sin(pos * 0.5 * np.pi/FADE))
+            for pos in range(FADE): snipaudio[pos+len(snipaudio)-FADE] *= np.square(np.cos(pos * 0.5 * np.pi/FADE)) 
+        for pos in range(FADE):
+            concat_pos = pos + len(concat) - FADE
+            concat[concat_pos] += snipaudio[pos]
+        concat = np.concatenate((concat, snipaudio[FADE:]), axis=0)
+        track_markers.append((len(concat) - 0.5 * FADE) / SR)
+        q.put(1)
+    sf.write(os.path.join(sdir, 'concat.wav'), concat, SR)
+    return (sdir.split('/')[1], len(concat) / SR, track_markers[:-1])
+
+
 def findNearest(a, v):
     return min(a, key=lambda x:abs(x-v))
 
@@ -128,44 +150,19 @@ def listener(q):
         elif g == 1:
             count.value += 1
             bar.update(count.value)
+  
 
+def beatPositions(args):
+    return _beatPositions(*args)
 
-def storeSnippets(args):
-    return _storeSnippets(*args)
-    
-def _storeSnippets(f, args):
-    #fixMp3Header(f)
-    b = beatPostions(f)
-    makeSnippet(b)
+def _beatPositions(f, args):
     q = args[-1]
+    audio = MonoLoader(filename=f[1])()
+    beat_tracker = BeatTrackerMultiFeature()
+    beats, confidence = beat_tracker(audio)
+    etree = f[1].split('/')[-3]
     q.put(1)
-
-
-def concatenateSnippets(args):
-    return _concatenateSnippets(*args)
-
-def _concatenateSnippets(e, args):
-    sdir = os.path.join('source', e)
-    snipfiles = [os.path.join(sdir, f) for f in os.listdir(sdir) if f.endswith('_snippet.wav')]
-    out_file = os.path.join(sdir, 'out.wav')
-    concat_file = os.path.join(sdir, 'concatenated.wav')
-    shutil.copy(snipfiles[0], concat_file)
-    _cmd = 'sox {0} {1} {2} gain -n -0.01 splice -q {3},{4}'
-    concat_length = sox.file_info.duration(concat_file)
-    track_markers = [0, concat_length - CROSSFADE]
-    for i, file2 in enumerate(snipfiles[1:]):
-        snip_length = sox.file_info.duration(file2)
-        track_markers.append(track_markers[i+1] + snip_length - CROSSFADE )
-        cmd = _cmd.format(concat_file, file2, out_file, concat_length, CROSSFADE)
-        p = Popen(cmd, shell=True, stdout=DEVNULL, stderr=DEVNULL)
-        p.wait()
-        shutil.move(out_file, concat_file)
-        concat_length = sox.file_info.duration(concat_file)
-    [os.remove(s) for s in snipfiles]
-    q = args[-1]
-    q.put(1)
-    return (e, concat_length, track_markers[:-1])
-
+    return (etree, f[0], f[1], len(audio)/44100, list(beats)[::4]) 
 
 
 def makeParameters(etree_refs):
@@ -183,12 +180,13 @@ def makeParameters(etree_refs):
     return ps
 
 
-def mpStart(func, enum, threads=THREADS, args=()):
+def mpStart(func, enum, threads=THREADS, args=(), pbar=None):
     global bar
+    if not pbar: pbar = len(enum)
     count.value = 0
     q = manager.Queue()
     args = args + tuple([q])  
-    bar = ProgressBar(max_value=len(enum)).start()
+    bar = ProgressBar(max_value=pbar).start()
     pool = mp.Pool(threads + 1)
     watcher = pool.apply_async(listener, (q,))
     p = pool.map(func, zip(enum, repeat(args)), chunksize=1)
@@ -200,13 +198,13 @@ def mpStart(func, enum, threads=THREADS, args=()):
 
 
 def main():
+    print('analysing input audio')
     ref_files = refFiles()
-    print('making 1 min snippets')
-    mpStart(storeSnippets, ref_files)
-    print('concatenating snippets')
-    etree_refs = mpStart(concatenateSnippets, REFS)
-    #[print(sorted(e[2])) for e in etree_refs]
-    parameters = makeParameters(etree_refs)
+    input_audio = inputAudio(ref_files)
+    print('creating source audio')
+    source_audio = mpStart(sourceAudio, input_audio, pbar=len(input_audio * 10))
+    print('creating test audio')
+    parameters = makeParameters(source_audio)
 
 
 
