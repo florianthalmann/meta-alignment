@@ -23,7 +23,7 @@ SR = 44100
 FADE = int(0.1 * SR)
 TRIM = 60           # tracks 1 and 10 must be >= TRIM+ADD, tracks 2-9 >= TRIM
 ADD = 20            # up to 20s can be prepended/appended to test audio
-DATASETSIZE = 100    # per etree
+DATASETSIZE = 10    # per etree
 MARKER_DEVIATION = 10
 
 
