@@ -149,12 +149,9 @@ def mpStart(func, enum, threads=THREADS, args=(), pbar=None):
 
 
 def main():
-    if os.path.exists('data'): shutil.rmtree('data')
-    os.mkdir('data')
     parameters = test_parameters()
     parameters = test_parameters_pickle()
     makeDataStart(parameters)
     
-
 
 main()
