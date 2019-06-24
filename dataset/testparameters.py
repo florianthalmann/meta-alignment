@@ -48,7 +48,6 @@ class Parameters(object):
         self.eq()
         self.segments()
         
-
     def reverberation(self):
         if self.reverb == True:
             reverberance = randint(50, 75)
