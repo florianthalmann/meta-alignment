@@ -289,7 +289,7 @@ def mpStart(func, enum, threads=THREADS, args=(), pbar=None):
     if not pbar: pbar = len(enum)
     count.value = 0
     q = manager.Queue()
-    args = args + tuple([q])  
+    args = args + (q,)
     bar = ProgressBar(max_value=pbar).start()
     pool = mp.Pool(threads + 1)
     watcher = pool.apply_async(listener, (q,))
