@@ -70,7 +70,6 @@ def bleedAudio(a, p):
 
 
 def reverbEqSpeed(a, p):
-    # (reverberance, pre_delay, wet_gain)
     if not p.reverb and p.speed == 1 and not p.equaliser: return a
     tfm = sox.Transformer()
     if p.reverb:
