@@ -32,7 +32,7 @@ def _makeData(p, args):
     unsplit, segments, length = addAudio(unsplit, p)
     unsplit = addCrowd(unsplit, p, length)
     unsplit = bleedAudio(unsplit, p)
-    unsplit = reverbEqSpeed(unsplit, p)
+    unsplit = reverbSpeedEq(unsplit, p)
     segments = segmentAudio(unsplit, p)
     writeAudio(segments, p)
     args[-1].put(1)
@@ -69,7 +69,7 @@ def bleedAudio(a, p):
     return np.column_stack((l, r)) / (1 + p.bleed)
 
 
-def reverbEqSpeed(a, p):
+def reverbSpeedEq(a, p):
     if not p.reverb and p.speed == 1 and not p.equaliser: return a
     tfm = sox.Transformer()
     if p.reverb:
