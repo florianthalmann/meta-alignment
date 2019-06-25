@@ -150,7 +150,7 @@ def mpStart(func, enum, threads=THREADS, args=(), pbar=None):
 
 def main():
     parameters = test_parameters()
-    parameters = test_parameters_pickle()
+    #parameters = test_parameters_pickle()
     makeDataStart(parameters)
     
 
