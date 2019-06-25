@@ -11,8 +11,8 @@ import numpy as np
 import pickle
 
 
-REFS = [d for d in os.listdir('source') if os.path.isdir(os.path.join('source', d))]
-#REFS = ['gd1982-10-10.sbd.fixed.miller.110784.flac16']
+#REFS = [d for d in os.listdir('source') if os.path.isdir(os.path.join('source', d))]
+REFS = ['gd1982-10-10.sbd.fixed.miller.110784.flac16']
 
 THREADS = int(mp.cpu_count()/2)
 manager = mp.Manager()
@@ -123,10 +123,16 @@ class Parameters(object):
             segments.append(s)
 
         # remove tracks:
+        '''
         remove_indices = split_indices
         for s in sorted(split_is):
             for i, v in enumerate(remove_indices):
                 if remove_indices[i] > s: remove_indices[i] += 1
+        '''
+        remove_indices = [i for i in range(len(segments))]
+        if self.add in ('start', 'both'): remove_indices.remove(0)
+        if self.add in ('end', 'both'): remove_indices.remove(remove_indices[-1])
+
         remove_is = []
         for n in range(self.remove_tracks):
             remove_i = choice(remove_indices)
@@ -135,7 +141,7 @@ class Parameters(object):
         _segments = []
         for i, s in enumerate(segments):
             if i not in remove_is: _segments.append(s)
-
+        
         self.segments = _segments
               
 
@@ -176,7 +182,7 @@ def _sourceAudio(e, args):
     concat = None
     track_markers = None
     for i, f in enumerate(e):
-        fixMp3Header(f[0])
+        #fixMp3Header(f[0])
         sdir = '/'.join(f[0].split('/')[:-2])
         fname = f[0].replace('/original/', '/')[:-3] + 'wav'
         flength = f[1]
